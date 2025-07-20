@@ -17,7 +17,7 @@ RED = \033[0;31m
 BLUE = \033[0;34m
 NC = \033[0m # No Color
 
-.PHONY: help venv venv-create venv-activate venv-check pyenv-setup python-check fresh-install install run run-dev migrate makemigrations superuser shell test test-coverage clean docker-up docker-down docker-logs docker-restart
+.PHONY: help venv venv-create venv-activate venv-check pyenv-setup python-check fresh-install install run run-dev migrate makemigrations superuser shell test test-coverage clean docker-up docker-down docker-logs docker-restart startapp
 
 # Default target
 help:
@@ -46,6 +46,7 @@ help:
 	@echo "  $(YELLOW)reset-db$(NC)        - Reset database (drop and recreate)"
 	@echo "  $(YELLOW)collectstatic$(NC)   - Collect static files"
 	@echo "  $(YELLOW)check$(NC)           - Run Django system check"
+	@echo "  $(YELLOW)startapp$(NC)        - Create new Django app"
 
 # Virtual environment management
 venv:
@@ -264,6 +265,22 @@ collectstatic:
 check:
 	@echo "$(GREEN)Running Django system check...$(NC)"
 	cd apps && uv run $(MANAGE) check
+
+# Create new Django app
+startapp:
+	@if [ -z "$(APP_NAME)" ]; then \
+		echo "$(RED)Error: APP_NAME is required$(NC)"; \
+		echo "$(YELLOW)Usage: make startapp APP_NAME=your_app_name$(NC)"; \
+		echo "$(BLUE)Example: make startapp APP_NAME=agents$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)Creating new Django app: $(APP_NAME)$(NC)"
+	cd apps && uv run $(MANAGE) startapp $(APP_NAME)
+	@echo "$(GREEN)✅ App '$(APP_NAME)' created successfully!$(NC)"
+	@echo "$(YELLOW)Don't forget to:$(NC)"
+	@echo "  • Add '$(APP_NAME)' to INSTALLED_APPS in settings.py"
+	@echo "  • Create models in $(APP_NAME)/models.py"
+	@echo "  • Run 'make makemigrations' to create migrations"
 
 # Development setup (install + migrate + create superuser)
 setup-dev: install docker-up
