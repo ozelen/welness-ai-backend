@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
+from datetime import date
+from typing import Optional
 import uuid
 
 
@@ -18,7 +20,7 @@ class Goal(models.Model):
     goal_type = models.CharField(max_length=50, choices=GOAL_TYPES)
     target_date = models.DateField(null=True, blank=True)
     notes = models.TextField(blank=True)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True) # type: ignore
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -26,7 +28,27 @@ class Goal(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.user.username}'s {self.get_goal_type_display()} goal"
+        return f"{self.user.username}'s {self.get_goal_type_display()} goal"  # type: ignore
+    
+    def to_dict(self) -> dict:
+        """Convert goal to dictionary for API responses"""
+        return {
+            'id': str(self.id),
+            'goal_type': self.goal_type,
+            'goal_type_display': self.get_goal_type_display(),  # type: ignore
+            'target_date': self.target_date.isoformat() if self.target_date else None,  # type: ignore
+            'notes': self.notes,
+            'created_at': self.created_at.isoformat(),  # type: ignore
+            'updated_at': self.updated_at.isoformat(),  # type: ignore
+            'days_remaining': (self.target_date - date.today()).days if self.target_date else None
+        }
+    
+    @property
+    def days_remaining(self) -> Optional[int]:
+        """Calculate days remaining until target date"""
+        if self.target_date:
+            return (self.target_date - date.today()).days
+        return None
 
 class BodyMeasurement(models.Model):
     BODY_METRICS = [
@@ -57,3 +79,17 @@ class BodyMeasurement(models.Model):
 
     def __str__(self):
         return f"{self.goal.user.username}'s {self.get_measurement_type_display()} {self.get_metric_display()} measurement"
+    
+    def to_dict(self) -> dict:
+        """Convert body measurement to dictionary for API responses"""
+        return {
+            'id': self.id, # type: ignore
+            'goal_id': str(self.goal.id) if self.goal else None,
+            'metric': self.metric,
+            'metric_display': self.get_metric_display(), # type: ignore
+            'measurement_type': self.measurement_type,
+            'measurement_type_display': self.get_measurement_type_display(), # type: ignore
+            'value': self.value,
+            'timestamp': self.timestamp.isoformat(), # type: ignore
+            'created_at': self.created_at.isoformat() # type: ignore
+        }

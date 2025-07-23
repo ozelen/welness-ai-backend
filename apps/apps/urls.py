@@ -21,5 +21,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path("meals/", include("meals.urls")),
     path("goals/", include("goals.urls")),
+    path("agents/", include("agents.urls")),
     # path("bots/", include("bots.urls")),
 ]

@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'goals.apps.GoalsConfig',
     'meals.apps.MealsConfig',
     'bots.apps.BotsConfig',
+    'agents.apps.AgentsConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
