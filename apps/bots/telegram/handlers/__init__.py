@@ -1,4 +1,4 @@
-from . import start, ravioli, chat
+from . import start, chat
 
 dps = (
     start.dp,

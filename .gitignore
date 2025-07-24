@@ -9,3 +9,4 @@ postgres/data/
 
 # Virtual environments
 .venv
+.env

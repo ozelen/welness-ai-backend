@@ -14,9 +14,14 @@ from telegrinder.rules import (
     Markup,
     Text,
 )
-from ...core.bot import chat_manager
-from ..api_instance import api  # Import the API instance from api_instance.py
-from ...core.agents import chat_response
+
+from ...bot_agent import BotAgent
+bot_agent = BotAgent(
+    name="telegram_bot",
+    model="openai:gpt-4o-mini",
+    tools=[],
+    prompt="You are a helpful assistant",
+)
 
 # Global state for tracking typing tasks
 typing_tasks: Dict[int, asyncio.Task] = {}
@@ -39,7 +44,7 @@ async def hello(message: Message):
 async def clear_chat(message: Message):
     """Clear the conversation history for the user."""
     user_id = message.from_user.id
-    chat_manager.clear_conversation(user_id)
+    # chat_manager.clear_conversation(user_id)
     await message.reply("Conversation history has been cleared!")
 
 @dp.message(final=False)
@@ -48,7 +53,7 @@ async def handle_all_chat_messages(message: Message): # Renamed for clarity
     user_id = message.from_user.id
     chat_id = message.chat.id
     
-    for response_chunk in chat_response(user_id, user_text, chat_id):
+    for response_chunk in bot_agent.get_chat_response(user_id, user_text, chat_id):
         await message.answer(response_chunk)
     
     # for response_chunk in chat_manager.get_chat_response(user_id, user_text, chat_id):

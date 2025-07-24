@@ -6,7 +6,7 @@ services:
       context: ./postgres
       dockerfile: Dockerfile
     ports:
-      - 5432:5432
+      - 5433:5432
     environment:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: postgres
@@ -28,7 +28,7 @@ services:
     env_file:
       - .env
     ports:
-      - "6379:6379"
+      - "6389:6379"
       - "8001:8001"  # RedisInsight port
     volumes:
       - redis_data:/data
@@ -48,7 +48,7 @@ services:
     env_file:
       - .env
     ports:
-      - "27017:27017"
+      - "27018:27017"
     volumes:
       - mongodb_data:/data/db
       - mongodb_config:/data/configdb
@@ -70,7 +70,7 @@ services:
     env_file:
       - .env
     ports:
-      - "8081:8081"
+      - "8082:8081"
     depends_on:
       mongodb:
         condition: service_healthy
