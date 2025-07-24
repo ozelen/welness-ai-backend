@@ -52,6 +52,9 @@ class Goal(models.Model):
 
 class BodyMeasurement(models.Model):
     BODY_METRICS = [
+        ('age_years', 'Age (years)'),
+        ('gender', 'Gender'),
+        ('height_cm', 'Height (cm)'),
         ('weight_kg', 'Weight (kg)'),
         ('waist_cm', 'Waist (cm)'),
         ('hip_cm', 'Hip (cm)'),
