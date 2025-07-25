@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "anyio>=4.9.0",
     "django>=5.2.4",
     "langchain>=0.3.26",
     "langchain-openai>=0.3.28",
