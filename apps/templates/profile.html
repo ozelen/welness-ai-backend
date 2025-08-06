@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - Wellness AI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 1rem 0;
+            margin-bottom: 2rem;
+        }
+
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: white;
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            color: #ffd700;
+        }
+
+        .btn {
+            padding: 0.5rem 1.5rem;
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: #ffd700;
+            color: #333;
+        }
+
+        .btn-primary:hover {
+            background: #ffed4e;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: white;
+            border: 2px solid white;
+        }
+
+        .btn-secondary:hover {
+            background: white;
+            color: #333;
+        }
+
+        .btn-google {
+            background: #4285f4;
+            color: white;
+            border: none;
+        }
+
+        .btn-google:hover {
+            background: #3367d6;
+            transform: translateY(-2px);
+        }
+
+        .btn-telegram {
+            background: #0088cc;
+            color: white;
+            border: none;
+        }
+
+        .btn-telegram:hover {
+            background: #0077b3;
+            transform: translateY(-2px);
+        }
+
+        .profile-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .profile-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .profile-section h2 {
+            color: #333;
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .integration-card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .integration-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .integration-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .integration-icon {
+            font-size: 2rem;
+            margin-right: 1rem;
+        }
+
+        .integration-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .integration-status {
+            margin-left: auto;
+            padding: 0.25rem 0.75rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-connected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .integration-description {
+            color: #666;
+            margin-bottom: 1rem;
+        }
+
+        .integration-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        .user-info {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 2rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            color: white;
+        }
+
+        .user-info h1 {
+            margin-bottom: 1rem;
+        }
+
+        .user-info p {
+            margin-bottom: 0.5rem;
+            opacity: 0.9;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .profile-container {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-links {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="/" class="logo">🤖 Wellness AI</a>
+                <ul class="nav-links">
+                    <li><a href="/dashboard/">Dashboard</a></li>
+                    <li><a href="/meals/">Meals</a></li>
+                    <li><a href="/goals/">Goals</a></li>
+                    <li><a href="/agents/">AI Agents</a></li>
+                </ul>
+                <div>
+                    <a href="/dashboard/" class="btn btn-secondary">Dashboard</a>
+                    <a href="/auth/logout/" class="btn btn-primary">Logout</a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- User Info -->
+        <div class="user-info">
+            <h1>Profile Settings</h1>
+            <p><strong>Email:</strong> {{ user.email }}</p>
+            <p><strong>Member since:</strong> {{ user.date_joined|date:"F j, Y" }}</p>
+        </div>
+
+        <!-- Messages -->
+        <div id="messages"></div>
+
+        <div class="profile-container">
+            <!-- Profile Information -->
+            <div class="profile-section">
+                <h2>📝 Personal Information</h2>
+                <form id="profileForm">
+                    <div class="form-group">
+                        <label for="first_name">First Name</label>
+                        <input type="text" id="first_name" name="first_name" value="{{ user.first_name }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="last_name">Last Name</label>
+                        <input type="text" id="last_name" name="last_name" value="{{ user.last_name }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="phone_number">Phone Number</label>
+                        <input type="tel" id="phone_number" name="phone_number" value="{{ user.profile.phone_number|default:'' }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="date_of_birth">Date of Birth</label>
+                        <input type="date" id="date_of_birth" name="date_of_birth" value="{{ user.profile.date_of_birth|date:'Y-m-d'|default:'' }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="bio">Bio</label>
+                        <textarea id="bio" name="bio" placeholder="Tell us about yourself...">{{ user.profile.bio|default:'' }}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="timezone">Timezone</label>
+                        <select id="timezone" name="timezone">
+                            <option value="UTC" {% if user.profile.timezone == 'UTC' %}selected{% endif %}>UTC</option>
+                            <option value="America/New_York" {% if user.profile.timezone == 'America/New_York' %}selected{% endif %}>Eastern Time</option>
+                            <option value="America/Chicago" {% if user.profile.timezone == 'America/Chicago' %}selected{% endif %}>Central Time</option>
+                            <option value="America/Denver" {% if user.profile.timezone == 'America/Denver' %}selected{% endif %}>Mountain Time</option>
+                            <option value="America/Los_Angeles" {% if user.profile.timezone == 'America/Los_Angeles' %}selected{% endif %}>Pacific Time</option>
+                            <option value="Europe/London" {% if user.profile.timezone == 'Europe/London' %}selected{% endif %}>London</option>
+                            <option value="Europe/Paris" {% if user.profile.timezone == 'Europe/Paris' %}selected{% endif %}>Paris</option>
+                            <option value="Asia/Tokyo" {% if user.profile.timezone == 'Asia/Tokyo' %}selected{% endif %}>Tokyo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="language">Language</label>
+                        <select id="language" name="language">
+                            <option value="en" {% if user.profile.language == 'en' %}selected{% endif %}>English</option>
+                            <option value="es" {% if user.profile.language == 'es' %}selected{% endif %}>Spanish</option>
+                            <option value="fr" {% if user.profile.language == 'fr' %}selected{% endif %}>French</option>
+                            <option value="de" {% if user.profile.language == 'de' %}selected{% endif %}>German</option>
+                            <option value="it" {% if user.profile.language == 'it' %}selected{% endif %}>Italian</option>
+                            <option value="pt" {% if user.profile.language == 'pt' %}selected{% endif %}>Portuguese</option>
+                            <option value="ru" {% if user.profile.language == 'ru' %}selected{% endif %}>Russian</option>
+                            <option value="zh" {% if user.profile.language == 'zh' %}selected{% endif %}>Chinese</option>
+                            <option value="ja" {% if user.profile.language == 'ja' %}selected{% endif %}>Japanese</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save Profile</button>
+                </form>
+            </div>
+
+            <!-- Integrations -->
+            <div class="profile-section">
+                <h2>🔗 Integrations</h2>
+                
+                <!-- Google Integration -->
+                <div class="integration-card">
+                    <div class="integration-header">
+                        <div class="integration-icon">📅</div>
+                        <div class="integration-title">Google Services</div>
+                        <div class="integration-status status-disconnected">Not Connected</div>
+                    </div>
+                    <div class="integration-description">
+                        Connect your Google account to sync calendar events, manage documents, and access Google Drive.
+                    </div>
+                    <div class="integration-actions">
+                        <button onclick="connectGoogle()" class="btn btn-google btn-small">Connect Google</button>
+                        <button onclick="disconnectGoogle()" class="btn btn-secondary btn-small" style="display: none;">Disconnect</button>
+                    </div>
+                </div>
+
+                <!-- Telegram Integration -->
+                <div class="integration-card">
+                    <div class="integration-header">
+                        <div class="integration-icon">📱</div>
+                        <div class="integration-title">Telegram</div>
+                        <div class="integration-status status-disconnected">Not Connected</div>
+                    </div>
+                    <div class="integration-description">
+                        Connect your Telegram account to receive notifications and updates directly in your chat.
+                    </div>
+                    <div class="integration-actions">
+                        <button onclick="connectTelegram()" class="btn btn-telegram btn-small">Connect Telegram</button>
+                        <button onclick="disconnectTelegram()" class="btn btn-secondary btn-small" style="display: none;">Disconnect</button>
+                    </div>
+                </div>
+
+                <!-- Account Security -->
+                <div class="integration-card">
+                    <div class="integration-header">
+                        <div class="integration-icon">🔒</div>
+                        <div class="integration-title">Account Security</div>
+                    </div>
+                    <div class="integration-description">
+                        Manage your account security settings and change your password.
+                    </div>
+                    <div class="integration-actions">
+                        <button onclick="changePassword()" class="btn btn-secondary btn-small">Change Password</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Profile form submission
+        document.getElementById('profileForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = {};
+            
+            for (let [key, value] of formData.entries()) {
+                data[key] = value;
+            }
+            
+            try {
+                const response = await fetch('/auth/profile/', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showMessage('Profile updated successfully!', 'success');
+                } else {
+                    showMessage('Error updating profile: ' + (result.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                showMessage('An error occurred while updating profile.', 'error');
+            }
+        });
+
+        // Google OAuth connection
+        async function connectGoogle() {
+            try {
+                const response = await fetch('/auth/google/oauth/', {
+                    method: 'GET'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.auth_url) {
+                    // Open Google OAuth in a popup
+                    const popup = window.open(data.auth_url, 'google_oauth', 'width=500,height=600');
+                    
+                    // Listen for the OAuth callback
+                    window.addEventListener('message', function(event) {
+                        if (event.data.type === 'google_oauth_success') {
+                            popup.close();
+                            showMessage('Google account connected successfully!', 'success');
+                            updateIntegrationStatus('google', true);
+                        }
+                    });
+                } else {
+                    showMessage('Error getting Google OAuth URL: ' + (data.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                showMessage('An error occurred while connecting Google.', 'error');
+            }
+        }
+
+        // Telegram connection
+        async function connectTelegram() {
+            try {
+                const response = await fetch('/auth/telegram/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        action: 'connect',
+                        telegram_user_id: prompt('Enter your Telegram User ID:'),
+                        telegram_username: prompt('Enter your Telegram username (optional):')
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage('Telegram account connected successfully!', 'success');
+                    updateIntegrationStatus('telegram', true);
+                } else {
+                    showMessage('Error connecting Telegram: ' + (data.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                showMessage('An error occurred while connecting Telegram.', 'error');
+            }
+        }
+
+        // Disconnect functions
+        async function disconnectGoogle() {
+            if (confirm('Are you sure you want to disconnect your Google account?')) {
+                try {
+                    const response = await fetch('/auth/google/disconnect/', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': getCookie('csrftoken')
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        showMessage('Google account disconnected successfully!', 'success');
+                        updateIntegrationStatus('google', false);
+                    } else {
+                        showMessage('Error disconnecting Google account.', 'error');
+                    }
+                } catch (error) {
+                    showMessage('An error occurred while disconnecting Google.', 'error');
+                }
+            }
+        }
+
+        async function disconnectTelegram() {
+            if (confirm('Are you sure you want to disconnect your Telegram account?')) {
+                try {
+                    const response = await fetch('/auth/telegram/', {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': getCookie('csrftoken')
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        showMessage('Telegram account disconnected successfully!', 'success');
+                        updateIntegrationStatus('telegram', false);
+                    } else {
+                        showMessage('Error disconnecting Telegram account.', 'error');
+                    }
+                } catch (error) {
+                    showMessage('An error occurred while disconnecting Telegram.', 'error');
+                }
+            }
+        }
+
+        // Change password
+        function changePassword() {
+            const oldPassword = prompt('Enter your current password:');
+            const newPassword = prompt('Enter your new password:');
+            const confirmPassword = prompt('Confirm your new password:');
+            
+            if (newPassword !== confirmPassword) {
+                showMessage('New passwords do not match!', 'error');
+                return;
+            }
+            
+            // Here you would typically make an API call to change the password
+            showMessage('Password change functionality will be implemented soon.', 'success');
+        }
+
+        // Utility functions
+        function showMessage(message, type) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = type === 'success' ? 'success-message' : 'error-message';
+            messageDiv.textContent = message;
+            
+            messagesDiv.appendChild(messageDiv);
+            
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 5000);
+        }
+
+        function updateIntegrationStatus(integration, connected) {
+            const card = document.querySelector(`[data-integration="${integration}"]`);
+            if (card) {
+                const status = card.querySelector('.integration-status');
+                const connectBtn = card.querySelector('.btn-google, .btn-telegram');
+                const disconnectBtn = card.querySelector('.btn-secondary');
+                
+                if (connected) {
+                    status.textContent = 'Connected';
+                    status.className = 'integration-status status-connected';
+                    connectBtn.style.display = 'none';
+                    disconnectBtn.style.display = 'inline-block';
+                } else {
+                    status.textContent = 'Not Connected';
+                    status.className = 'integration-status status-disconnected';
+                    connectBtn.style.display = 'inline-block';
+                    disconnectBtn.style.display = 'none';
+                }
+            }
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+</html> 
