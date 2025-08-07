@@ -73,7 +73,7 @@ class MealRecord(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.meal.name} - {self.date}"
+        return f"{self.meal.name} - {self.timestamp}"
 
 class MealPreference(models.Model):
     PREFERENCE_TYPES = [
@@ -94,4 +94,4 @@ class MealPreference(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.user.username} {self.preference_type} {self.ingredient.name}"
+        return f"{self.user} {self.preference_type} {self.ingredient.name}"

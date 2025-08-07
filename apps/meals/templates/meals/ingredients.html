@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+{% load meal_extras %}
+
+{% block title %}Ingredients{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">Ingredients</h1>
+                <p class="text-gray-600">Browse and search for ingredients to add to your preferences</p>
+            </div>
+            <a href="{% url 'meals:dashboard' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="bg-white rounded-lg shadow mb-8">
+        <div class="p-6">
+            <form method="GET" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="q" class="block text-sm font-medium text-gray-700">Search Ingredients</label>
+                        <input type="text" id="q" name="q" value="{{ query }}"
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="Search by name or description...">
+                    </div>
+                    <div>
+                        <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
+                        <select id="category" name="category" 
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">All Categories</option>
+                            {% for category in categories %}
+                            <option value="{{ category.id }}" {% if request.GET.category == category.id|stringformat:"s" %}selected{% endif %}>
+                                {{ category.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="flex items-end">
+                        <button type="submit" 
+                                class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                            Search
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Ingredients Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for ingredient in ingredients %}
+        <div class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-200">
+            <div class="p-6">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold text-gray-900">{{ ingredient.name }}</h3>
+                        {% if ingredient.category %}
+                        <p class="text-sm text-gray-600">{{ ingredient.category.name }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="ml-4">
+                        {% if ingredient.id in preferred_ingredient_ids %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                            {% if user_preferences|get_item:ingredient.id == 'love' %}bg-red-100 text-red-800
+                            {% elif user_preferences|get_item:ingredient.id == 'like' %}bg-green-100 text-green-800
+                            {% elif user_preferences|get_item:ingredient.id == 'dislike' %}bg-yellow-100 text-yellow-800
+                            {% elif user_preferences|get_item:ingredient.id == 'hate' %}bg-red-200 text-red-900
+                            {% elif user_preferences|get_item:ingredient.id == 'restriction' %}bg-orange-100 text-orange-800
+                            {% elif user_preferences|get_item:ingredient.id == 'allergy' %}bg-red-300 text-red-900
+                            {% endif %}">
+                            {{ user_preferences|get_item:ingredient.id|title }}
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            No Preference
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Nutritional Info -->
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="text-center p-3 bg-gray-50 rounded-lg">
+                        <div class="text-lg font-bold text-gray-900">{{ ingredient.calories|floatformat:0 }}</div>
+                        <div class="text-xs text-gray-600">Calories</div>
+                    </div>
+                    <div class="text-center p-3 bg-gray-50 rounded-lg">
+                        <div class="text-lg font-bold text-gray-900">{{ ingredient.proteins|floatformat:1 }}g</div>
+                        <div class="text-xs text-gray-600">Protein</div>
+                    </div>
+                    <div class="text-center p-3 bg-gray-50 rounded-lg">
+                        <div class="text-lg font-bold text-gray-900">{{ ingredient.carbs|floatformat:1 }}g</div>
+                        <div class="text-xs text-gray-600">Carbs</div>
+                    </div>
+                    <div class="text-center p-3 bg-gray-50 rounded-lg">
+                        <div class="text-lg font-bold text-gray-900">{{ ingredient.fats|floatformat:1 }}g</div>
+                        <div class="text-xs text-gray-600">Fat</div>
+                    </div>
+                </div>
+
+                {% if ingredient.description %}
+                <p class="text-sm text-gray-600 mb-4">{{ ingredient.description|truncatewords:20 }}</p>
+                {% endif %}
+
+                <!-- Action Buttons -->
+                <div class="flex space-x-2">
+                    {% if ingredient.id not in preferred_ingredient_ids %}
+                    <button onclick="addPreference({{ ingredient.id }}, '{{ ingredient.name }}')" 
+                            class="flex-1 inline-flex justify-center items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                        Add Preference
+                    </button>
+                    {% else %}
+                    <button onclick="editPreference({{ ingredient.id }}, '{{ ingredient.name }}')" 
+                            class="flex-1 inline-flex justify-center items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Edit Preference
+                    </button>
+                    {% endif %}
+                    <button onclick="viewDetails({{ ingredient.id }})" 
+                            class="px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Details
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-span-full">
+            <div class="bg-white rounded-lg shadow p-12 text-center">
+                <div class="mx-auto w-24 h-24 text-gray-400">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                </div>
+                <h3 class="mt-4 text-lg font-medium text-gray-900">No ingredients found</h3>
+                <p class="mt-2 text-gray-600">
+                    {% if query %}
+                    No ingredients match your search for "{{ query }}".
+                    {% else %}
+                    No ingredients available yet.
+                    {% endif %}
+                </p>
+                {% if query %}
+                <div class="mt-6">
+                    <a href="{% url 'meals:ingredients-page' %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                        Clear Search
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if ingredients.has_other_pages %}
+    <div class="mt-8 flex justify-center">
+        <nav class="flex items-center space-x-2">
+            {% if ingredients.has_previous %}
+            <a href="?page={{ ingredients.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}" 
+               class="px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                Previous
+            </a>
+            {% endif %}
+
+            {% for num in ingredients.paginator.page_range %}
+            {% if ingredients.number == num %}
+            <span class="px-3 py-2 border border-blue-500 text-sm font-medium rounded-md text-blue-600 bg-blue-50">
+                {{ num }}
+            </span>
+            {% elif num > ingredients.number|add:'-3' and num < ingredients.number|add:'3' %}
+            <a href="?page={{ num }}{% if query %}&q={{ query }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}" 
+               class="px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                {{ num }}
+            </a>
+            {% endif %}
+            {% endfor %}
+
+            {% if ingredients.has_next %}
+            <a href="?page={{ ingredients.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}" 
+               class="px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                Next
+            </a>
+            {% endif %}
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Add Preference Modal -->
+<div id="addPreferenceModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Add Preference</h3>
+            </div>
+            <form id="addPreferenceForm" class="p-6">
+                <input type="hidden" id="ingredient_id" name="ingredient_id">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Ingredient</label>
+                        <p id="ingredient_name" class="mt-1 text-sm text-gray-900"></p>
+                    </div>
+                    <div>
+                        <label for="preference_type" class="block text-sm font-medium text-gray-700">Preference Type</label>
+                        <select id="preference_type" name="preference_type" required
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Select preference type</option>
+                            <option value="love">Love</option>
+                            <option value="like">Like</option>
+                            <option value="dislike">Dislike</option>
+                            <option value="hate">Hate</option>
+                            <option value="restriction">Restriction</option>
+                            <option value="allergy">Allergy</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="description" class="block text-sm font-medium text-gray-700">Description (Optional)</label>
+                        <textarea id="description" name="description" rows="3"
+                                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                  placeholder="Add any notes about this preference..."></textarea>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" onclick="closeAddPreferenceModal()" 
+                            class="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                            class="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                        Add Preference
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Add preference
+function addPreference(ingredientId, ingredientName) {
+    document.getElementById('ingredient_id').value = ingredientId;
+    document.getElementById('ingredient_name').textContent = ingredientName;
+    document.getElementById('addPreferenceModal').classList.remove('hidden');
+}
+
+// Close add preference modal
+function closeAddPreferenceModal() {
+    document.getElementById('addPreferenceModal').classList.add('hidden');
+    document.getElementById('addPreferenceForm').reset();
+}
+
+// Add preference form
+document.getElementById('addPreferenceForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = {
+        ingredient_id: formData.get('ingredient_id'),
+        preference_type: formData.get('preference_type'),
+        description: formData.get('description')
+    };
+    
+    fetch('/meals/preferences/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.id) {
+            location.reload();
+        } else {
+            alert('Error adding preference');
+        }
+    });
+});
+
+// Edit preference (redirect to preferences page)
+function editPreference(ingredientId, ingredientName) {
+    window.location.href = `/meals/preferences/?ingredient=${ingredientId}`;
+}
+
+// View ingredient details
+function viewDetails(ingredientId) {
+    window.location.href = `/meals/ingredients/${ingredientId}/`;
+}
+
+// Get CSRF token
+function getCookie(name) {
+    // First try to get from meta tag
+    const metaToken = document.querySelector('meta[name="csrf-token"]');
+    if (metaToken && name === 'csrftoken') {
+        return metaToken.getAttribute('content');
+    }
+    
+    // Fallback to cookie method
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %} 
