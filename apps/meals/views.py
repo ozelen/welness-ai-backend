@@ -28,6 +28,7 @@ def meals_dashboard(request):
     diets = Diet.objects.filter(user=user)
     preferences = MealPreference.objects.filter(user=user)
     recent_meals = MealRecord.objects.filter(user=user).order_by('-timestamp')[:5]
+    meals = Meal.objects.filter(diet__user=user)
     
     # Get preference summary
     preference_summary = {
@@ -41,6 +42,7 @@ def meals_dashboard(request):
     
     context = {
         'diets': diets,
+        'meals': meals,
         'preferences': preferences[:10],  # Show first 10 preferences
         'recent_meals': recent_meals,
         'preference_summary': preference_summary,

@@ -8,7 +8,7 @@ urlpatterns = [
     path('', views.meals_dashboard, name='dashboard'),
     path('preferences-page/', views.preferences_page, name='preferences-page'),
     path('ingredients-page/', views.ingredients_page, name='ingredients-page'),
-    path('meals-page/', views.meals_management_page, name='meals'),
+    path('manage/', views.meals_management_page, name='meals'),
     
     # Diet endpoints
     path('diets/', views.DietListView.as_view(), name='diet-list'),
