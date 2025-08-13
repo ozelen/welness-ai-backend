@@ -42,4 +42,8 @@ urlpatterns = [
     path('preferences/summary/', views.user_meal_preferences_summary, name='meal-preference-summary'),
     path('preferences/bulk-update/', views.bulk_update_meal_preferences, name='bulk-update-preferences'),
     path('preferences/<int:preference_id>/delete/', views.delete_meal_preference, name='delete-meal-preference'),
+    
+    # Quick preference endpoints
+    path('preferences/quick-update/', views.quick_preference_update, name='quick-preference-update'),
+    path('preferences/quick-delete/<int:ingredient_id>/', views.quick_preference_delete, name='quick-preference-delete'),
 ]

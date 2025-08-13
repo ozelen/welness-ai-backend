@@ -54,7 +54,7 @@
     <!-- Ingredients Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {% for ingredient in ingredients %}
-        <div class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-200">
+        <div class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-200" data-ingredient-id="{{ ingredient.id }}">
             <div class="p-6">
                 <div class="flex items-start justify-between mb-4">
                     <div class="flex-1">
@@ -63,23 +63,58 @@
                         <p class="text-sm text-gray-600">{{ ingredient.category.name }}</p>
                         {% endif %}
                     </div>
-                    <div class="ml-4">
-                        {% if ingredient.id in preferred_ingredient_ids %}
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                            {% if user_preferences|get_item:ingredient.id == 'love' %}bg-red-100 text-red-800
-                            {% elif user_preferences|get_item:ingredient.id == 'like' %}bg-green-100 text-green-800
-                            {% elif user_preferences|get_item:ingredient.id == 'dislike' %}bg-yellow-100 text-yellow-800
-                            {% elif user_preferences|get_item:ingredient.id == 'hate' %}bg-red-200 text-red-900
-                            {% elif user_preferences|get_item:ingredient.id == 'restriction' %}bg-orange-100 text-orange-800
-                            {% elif user_preferences|get_item:ingredient.id == 'allergy' %}bg-red-300 text-red-900
-                            {% endif %}">
-                            {{ user_preferences|get_item:ingredient.id|title }}
-                        </span>
-                        {% else %}
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                            No Preference
-                        </span>
-                        {% endif %}
+                </div>
+
+                <!-- Quick Preference Selection -->
+                <div class="mb-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-gray-700">Your preference:</span>
+                        <button onclick="deletePreference({{ ingredient.id }})" 
+                                class="text-gray-400 hover:text-red-500 transition-colors duration-200 {% if ingredient.id not in preferred_ingredient_ids %}hidden{% endif %}"
+                                title="Remove preference"
+                                id="delete-btn-{{ ingredient.id }}">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="flex space-x-2 mt-2">
+                        <button onclick="setPreference({{ ingredient.id }}, 'love')" 
+                                class="flex-1 p-2 rounded-lg border-2 transition-all duration-200 hover:scale-105
+                                {% if user_preferences|get_item:ingredient.id == 'love' %}border-red-500 bg-red-50 text-red-600{% else %}border-gray-200 hover:border-red-300 text-gray-400 hover:text-red-500{% endif %}"
+                                title="Love">
+                            <span class="text-lg">❤️</span>
+                        </button>
+                        <button onclick="setPreference({{ ingredient.id }}, 'like')" 
+                                class="flex-1 p-2 rounded-lg border-2 transition-all duration-200 hover:scale-105
+                                {% if user_preferences|get_item:ingredient.id == 'like' %}border-green-500 bg-green-50 text-green-600{% else %}border-gray-200 hover:border-green-300 text-gray-400 hover:text-green-500{% endif %}"
+                                title="Like">
+                            <span class="text-lg">👍</span>
+                        </button>
+                        <button onclick="setPreference({{ ingredient.id }}, 'dislike')" 
+                                class="flex-1 p-2 rounded-lg border-2 transition-all duration-200 hover:scale-105
+                                {% if user_preferences|get_item:ingredient.id == 'dislike' %}border-yellow-500 bg-yellow-50 text-yellow-600{% else %}border-gray-200 hover:border-yellow-300 text-gray-400 hover:text-yellow-500{% endif %}"
+                                title="Dislike">
+                            <span class="text-lg">👎</span>
+                        </button>
+                        <button onclick="setPreference({{ ingredient.id }}, 'hate')" 
+                                class="flex-1 p-2 rounded-lg border-2 transition-all duration-200 hover:scale-105
+                                {% if user_preferences|get_item:ingredient.id == 'hate' %}border-red-600 bg-red-100 text-red-700{% else %}border-gray-200 hover:border-red-400 text-gray-400 hover:text-red-600{% endif %}"
+                                title="Hate">
+                            <span class="text-lg">😡</span>
+                        </button>
+                        <button onclick="setPreference({{ ingredient.id }}, 'restriction')" 
+                                class="flex-1 p-2 rounded-lg border-2 transition-all duration-200 hover:scale-105
+                                {% if user_preferences|get_item:ingredient.id == 'restriction' %}border-orange-500 bg-orange-50 text-orange-600{% else %}border-gray-200 hover:border-orange-300 text-gray-400 hover:text-orange-500{% endif %}"
+                                title="Restriction">
+                            <span class="text-lg">🚫</span>
+                        </button>
+                        <button onclick="setPreference({{ ingredient.id }}, 'allergy')" 
+                                class="flex-1 p-2 rounded-lg border-2 transition-all duration-200 hover:scale-105
+                                {% if user_preferences|get_item:ingredient.id == 'allergy' %}border-red-700 bg-red-200 text-red-800{% else %}border-gray-200 hover:border-red-500 text-gray-400 hover:text-red-700{% endif %}"
+                                title="Allergy">
+                            <span class="text-lg">⚠️</span>
+                        </button>
                     </div>
                 </div>
 
@@ -108,18 +143,7 @@
                 {% endif %}
 
                 <!-- Action Buttons -->
-                <div class="flex space-x-2">
-                    {% if ingredient.id not in preferred_ingredient_ids %}
-                    <button onclick="addPreference({{ ingredient.id }}, '{{ ingredient.name }}')" 
-                            class="flex-1 inline-flex justify-center items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
-                        Add Preference
-                    </button>
-                    {% else %}
-                    <button onclick="editPreference({{ ingredient.id }}, '{{ ingredient.name }}')" 
-                            class="flex-1 inline-flex justify-center items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                        Edit Preference
-                    </button>
-                    {% endif %}
+                <div class="flex justify-end">
                     <button onclick="viewDetails({{ ingredient.id }})" 
                             class="px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                         Details
@@ -190,81 +214,17 @@
     {% endif %}
 </div>
 
-<!-- Add Preference Modal -->
-<div id="addPreferenceModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
-    <div class="flex items-center justify-center min-h-screen p-4">
-        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-lg font-medium text-gray-900">Add Preference</h3>
-            </div>
-            <form id="addPreferenceForm" class="p-6">
-                <input type="hidden" id="ingredient_id" name="ingredient_id">
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Ingredient</label>
-                        <p id="ingredient_name" class="mt-1 text-sm text-gray-900"></p>
-                    </div>
-                    <div>
-                        <label for="preference_type" class="block text-sm font-medium text-gray-700">Preference Type</label>
-                        <select id="preference_type" name="preference_type" required
-                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                            <option value="">Select preference type</option>
-                            <option value="love">Love</option>
-                            <option value="like">Like</option>
-                            <option value="dislike">Dislike</option>
-                            <option value="hate">Hate</option>
-                            <option value="restriction">Restriction</option>
-                            <option value="allergy">Allergy</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="description" class="block text-sm font-medium text-gray-700">Description (Optional)</label>
-                        <textarea id="description" name="description" rows="3"
-                                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                  placeholder="Add any notes about this preference..."></textarea>
-                    </div>
-                </div>
-                <div class="mt-6 flex justify-end space-x-3">
-                    <button type="button" onclick="closeAddPreferenceModal()" 
-                            class="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                        Cancel
-                    </button>
-                    <button type="submit" 
-                            class="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
-                        Add Preference
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+
 
 <script>
-// Add preference
-function addPreference(ingredientId, ingredientName) {
-    document.getElementById('ingredient_id').value = ingredientId;
-    document.getElementById('ingredient_name').textContent = ingredientName;
-    document.getElementById('addPreferenceModal').classList.remove('hidden');
-}
-
-// Close add preference modal
-function closeAddPreferenceModal() {
-    document.getElementById('addPreferenceModal').classList.add('hidden');
-    document.getElementById('addPreferenceForm').reset();
-}
-
-// Add preference form
-document.getElementById('addPreferenceForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(this);
+// Set preference using emoji buttons
+function setPreference(ingredientId, preferenceType) {
     const data = {
-        ingredient_id: formData.get('ingredient_id'),
-        preference_type: formData.get('preference_type'),
-        description: formData.get('description')
+        ingredient_id: ingredientId,
+        preference_type: preferenceType
     };
     
-    fetch('/meals/preferences/', {
+    fetch('/meals/preferences/quick-update/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -276,16 +236,87 @@ document.getElementById('addPreferenceForm').addEventListener('submit', function
     .then(response => response.json())
     .then(data => {
         if (data.id) {
-            location.reload();
+            // Update the UI immediately without reloading
+            updatePreferenceUI(ingredientId, preferenceType);
         } else {
-            alert('Error adding preference');
+            alert('Error updating preference');
         }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error updating preference');
     });
-});
+}
 
-// Edit preference (redirect to preferences page)
-function editPreference(ingredientId, ingredientName) {
-    window.location.href = `/meals/preferences/?ingredient=${ingredientId}`;
+// Delete preference
+function deletePreference(ingredientId) {
+    
+    fetch(`/meals/preferences/quick-delete/${ingredientId}/`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.message) {
+            // Update the UI immediately without reloading
+            updatePreferenceUI(ingredientId, null);
+        } else {
+            alert('Error deleting preference');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error deleting preference');
+    });
+}
+
+// Update the UI after preference change
+function updatePreferenceUI(ingredientId, preferenceType) {
+    const ingredientCard = document.querySelector(`[data-ingredient-id="${ingredientId}"]`);
+    if (!ingredientCard) return;
+    
+    const preferenceButtons = ingredientCard.querySelectorAll('[onclick*="setPreference"]');
+    const deleteButton = ingredientCard.querySelector('[onclick*="deletePreference"]');
+    
+    // Reset all buttons to default state
+    preferenceButtons.forEach(button => {
+        button.className = button.className.replace(/border-(red|green|yellow|orange)-\d+ bg-(red|green|yellow|orange)-\d+ text-(red|green|yellow|orange)-\d+/g, '');
+        button.className = button.className.replace(/hover:border-(red|green|yellow|orange)-\d+ hover:text-(red|green|yellow|orange)-\d+/g, '');
+        button.className += ' border-gray-200 text-gray-400 hover:border-gray-300 hover:text-gray-500';
+    });
+    
+    // Update the selected button
+    if (preferenceType) {
+        const selectedButton = ingredientCard.querySelector(`[onclick*="'${preferenceType}'"]`);
+        if (selectedButton) {
+            // Remove default classes
+            selectedButton.className = selectedButton.className.replace(/border-gray-200 text-gray-400 hover:border-gray-300 hover:text-gray-500/g, '');
+            
+            // Add selected state classes based on preference type
+            const colorMap = {
+                'love': 'border-red-500 bg-red-50 text-red-600',
+                'like': 'border-green-500 bg-green-50 text-green-600',
+                'dislike': 'border-yellow-500 bg-yellow-50 text-yellow-600',
+                'hate': 'border-red-600 bg-red-100 text-red-700',
+                'restriction': 'border-orange-500 bg-orange-50 text-orange-600',
+                'allergy': 'border-red-700 bg-red-200 text-red-800'
+            };
+            selectedButton.className += ` ${colorMap[preferenceType]}`;
+        }
+        
+        // Show delete button
+        if (deleteButton) {
+            deleteButton.style.display = 'block';
+        }
+    } else {
+        // Hide delete button when no preference
+        if (deleteButton) {
+            deleteButton.style.display = 'none';
+        }
+    }
 }
 
 // View ingredient details

@@ -410,3 +410,63 @@ def ingredient_suggestions(request):
     return Response({
         'suggestions': IngredientSearchSerializer(suggestions, many=True).data
     })
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def quick_preference_update(request):
+    """Quick update or create a preference for an ingredient"""
+    ingredient_id = request.data.get('ingredient_id')
+    preference_type = request.data.get('preference_type')
+    
+    if not ingredient_id or not preference_type:
+        return Response(
+            {'error': 'ingredient_id and preference_type are required'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        ingredient = Ingredient.objects.get(id=ingredient_id)
+    except Ingredient.DoesNotExist:
+        return Response(
+            {'error': 'Ingredient not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Check if preference already exists
+    preference, created = MealPreference.objects.get_or_create(
+        user=request.user,
+        ingredient=ingredient,
+        defaults={'preference_type': preference_type}
+    )
+    
+    if not created:
+        # Update existing preference
+        preference.preference_type = preference_type
+        preference.save()
+    
+    return Response({
+        'id': preference.id,
+        'ingredient_id': ingredient_id,
+        'preference_type': preference_type,
+        'created': created,
+        'message': 'Preference updated successfully'
+    })
+
+
+@api_view(['DELETE'])
+@permission_classes([permissions.IsAuthenticated])
+def quick_preference_delete(request, ingredient_id):
+    """Delete a preference for an ingredient"""
+    try:
+        preference = MealPreference.objects.get(
+            user=request.user,
+            ingredient_id=ingredient_id
+        )
+        preference.delete()
+        return Response({'message': 'Preference deleted successfully'})
+    except MealPreference.DoesNotExist:
+        return Response(
+            {'error': 'Preference not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
