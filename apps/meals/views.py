@@ -523,3 +523,204 @@ def get_ingredient(request, ingredient_id):
             {'error': 'Ingredient not found'}, 
             status=status.HTTP_404_NOT_FOUND
         )
+
+
+@login_required
+def meals_management_page(request):
+    """Meals management page"""
+    user = request.user
+    
+    # Get user's diets and meals
+    diets = Diet.objects.filter(user=user)
+    meals = Meal.objects.filter(diet__user=user).select_related('diet').prefetch_related('mealingredient_set__ingredient')
+    
+    # Get all ingredients for the ingredient selector
+    ingredients = Ingredient.objects.all().select_related('category')
+    
+    # Get categories for filtering
+    categories = Category.objects.all()
+    
+    context = {
+        'diets': diets,
+        'meals': meals,
+        'ingredients': ingredients,
+        'categories': categories,
+    }
+    
+    return render(request, 'meals/meals.html', context)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def create_meal(request):
+    """Create a new meal"""
+    serializer = MealSerializer(data=request.data)
+    if serializer.is_valid():
+        # Get the diet
+        diet_id = request.data.get('diet_id')
+        try:
+            diet = Diet.objects.get(id=diet_id, user=request.user)
+        except Diet.DoesNotExist:
+            return Response(
+                {'error': 'Diet not found'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        meal = serializer.save(diet=diet)
+        return Response({
+            'id': meal.id,
+            'name': meal.name,
+            'message': 'Meal created successfully'
+        }, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['PUT'])
+@permission_classes([permissions.IsAuthenticated])
+def update_meal(request, meal_id):
+    """Update an existing meal"""
+    try:
+        meal = Meal.objects.get(id=meal_id, diet__user=request.user)
+    except Meal.DoesNotExist:
+        return Response(
+            {'error': 'Meal not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    serializer = MealSerializer(meal, data=request.data, partial=True)
+    if serializer.is_valid():
+        meal = serializer.save()
+        return Response({
+            'id': meal.id,
+            'name': meal.name,
+            'message': 'Meal updated successfully'
+        })
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def get_meal(request, meal_id):
+    """Get meal details for editing"""
+    try:
+        meal = Meal.objects.get(id=meal_id, diet__user=request.user)
+        # Use the simplified serializer to avoid Goal serialization issues
+        from .serializers import MealEditSerializer
+        serializer = MealEditSerializer(meal)
+        return Response(serializer.data)
+    except Meal.DoesNotExist:
+        return Response(
+            {'error': 'Meal not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+
+@api_view(['DELETE'])
+@permission_classes([permissions.IsAuthenticated])
+def delete_meal(request, meal_id):
+    """Delete a meal"""
+    try:
+        meal = Meal.objects.get(id=meal_id, diet__user=request.user)
+        meal.delete()
+        return Response({'message': 'Meal deleted successfully'})
+    except Meal.DoesNotExist:
+        return Response(
+            {'error': 'Meal not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def add_ingredient_to_meal(request, meal_id):
+    """Add an ingredient to a meal"""
+    try:
+        meal = Meal.objects.get(id=meal_id, diet__user=request.user)
+    except Meal.DoesNotExist:
+        return Response(
+            {'error': 'Meal not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    ingredient_id = request.data.get('ingredient_id')
+    quantity = request.data.get('quantity', 100)  # Default to 100g
+    
+    try:
+        ingredient = Ingredient.objects.get(id=ingredient_id)
+    except Ingredient.DoesNotExist:
+        return Response(
+            {'error': 'Ingredient not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Check if ingredient already exists in meal
+    existing = MealIngredient.objects.filter(meal=meal, ingredient=ingredient).first()
+    if existing:
+        return Response(
+            {'error': 'Ingredient already exists in this meal'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    meal_ingredient = MealIngredient.objects.create(
+        meal=meal,
+        ingredient=ingredient,
+        quantity=quantity,
+        unit='g'
+    )
+    
+    return Response({
+        'id': meal_ingredient.id,
+        'ingredient_name': ingredient.name,
+        'quantity': quantity,
+        'message': 'Ingredient added successfully'
+    }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['PUT'])
+@permission_classes([permissions.IsAuthenticated])
+def update_meal_ingredient(request, meal_ingredient_id):
+    """Update meal ingredient quantity"""
+    try:
+        meal_ingredient = MealIngredient.objects.get(
+            id=meal_ingredient_id,
+            meal__diet__user=request.user
+        )
+    except MealIngredient.DoesNotExist:
+        return Response(
+            {'error': 'Meal ingredient not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    quantity = request.data.get('quantity')
+    if quantity is not None:
+        meal_ingredient.quantity = quantity
+        meal_ingredient.save()
+        
+        return Response({
+            'id': meal_ingredient.id,
+            'quantity': quantity,
+            'message': 'Quantity updated successfully'
+        })
+    
+    return Response(
+        {'error': 'Quantity is required'}, 
+        status=status.HTTP_400_BAD_REQUEST
+    )
+
+
+@api_view(['DELETE'])
+@permission_classes([permissions.IsAuthenticated])
+def remove_ingredient_from_meal(request, meal_ingredient_id):
+    """Remove an ingredient from a meal"""
+    try:
+        meal_ingredient = MealIngredient.objects.get(
+            id=meal_ingredient_id,
+            meal__diet__user=request.user
+        )
+        meal_ingredient.delete()
+        return Response({'message': 'Ingredient removed successfully'})
+    except MealIngredient.DoesNotExist:
+        return Response(
+            {'error': 'Meal ingredient not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )

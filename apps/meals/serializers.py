@@ -16,7 +16,7 @@ class UserSerializer(serializers.ModelSerializer):
 class GoalSerializer(serializers.ModelSerializer):
     class Meta:
         model = Goal
-        fields = ['id', 'name', 'description']
+        fields = ['id', 'goal_type', 'notes', 'target_date', 'is_active']
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -74,6 +74,18 @@ class MealSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'description', 'diet', 'diet_id',
             'ingredients', 'created_at', 'updated_at'
+        ]
+
+
+class MealEditSerializer(serializers.ModelSerializer):
+    """Simplified serializer for meal editing without nested Goal serialization"""
+    diet_id = serializers.IntegerField(source='diet.id', read_only=True)
+    
+    class Meta:
+        model = Meal
+        fields = [
+            'id', 'name', 'description', 'diet_id',
+            'created_at', 'updated_at'
         ]
 
 

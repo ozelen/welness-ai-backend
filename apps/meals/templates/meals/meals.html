@@ -1,0 +1,538 @@
+{% extends "base.html" %}
+{% load meal_extras %}
+
+{% block title %}Meals Management{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">Meals Management</h1>
+                <p class="text-gray-600">Create and manage your meals with ingredients</p>
+            </div>
+            <div class="flex space-x-3">
+                <button onclick="openMealModal()" 
+                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                    Add Meal
+                </button>
+                <a href="{% url 'meals:dashboard' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Meals Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {% for meal in meals %}
+        <div class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-200">
+            <div class="p-6">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="flex-1">
+                        <h3 class="text-xl font-semibold text-gray-900">{{ meal.name }}</h3>
+                        <p class="text-sm text-gray-600">{{ meal.diet.name }}</p>
+                        {% if meal.description %}
+                        <p class="text-sm text-gray-600 mt-1">{{ meal.description|truncatewords:20 }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="flex space-x-2 ml-4">
+                        <button onclick="editMeal({{ meal.id }})" 
+                                class="text-gray-400 hover:text-blue-600 transition-colors duration-200"
+                                title="Edit meal">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                            </svg>
+                        </button>
+                        <button onclick="deleteMeal({{ meal.id }}, '{{ meal.name }}')" 
+                                class="text-gray-400 hover:text-red-600 transition-colors duration-200"
+                                title="Delete meal">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Ingredients List -->
+                <div class="mb-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-sm font-medium text-gray-700">Ingredients</h4>
+                        <button onclick="openAddIngredientModal({{ meal.id }})" 
+                                class="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                            + Add Ingredient
+                        </button>
+                    </div>
+                    
+                    {% if meal.mealingredient_set.all %}
+                    <div class="space-y-2">
+                        {% for meal_ingredient in meal.mealingredient_set.all %}
+                        <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
+                            <div class="flex-1">
+                                <span class="text-sm font-medium text-gray-900">{{ meal_ingredient.ingredient.name }}</span>
+                                <span class="text-sm text-gray-600 ml-2">{{ meal_ingredient.quantity }}g</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button onclick="editIngredientQuantity({{ meal_ingredient.id }}, {{ meal_ingredient.quantity }})" 
+                                        class="text-gray-400 hover:text-blue-600 transition-colors duration-200"
+                                        title="Edit quantity">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                    </svg>
+                                </button>
+                                <button onclick="removeIngredient({{ meal_ingredient.id }}, '{{ meal_ingredient.ingredient.name }}')" 
+                                        class="text-gray-400 hover:text-red-600 transition-colors duration-200"
+                                        title="Remove ingredient">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-sm text-gray-500 italic">No ingredients added yet</p>
+                    {% endif %}
+                </div>
+
+                <!-- Nutritional Summary -->
+                {% if meal.mealingredient_set.all %}
+                <div class="border-t pt-4">
+                    <h4 class="text-sm font-medium text-gray-700 mb-2">Nutritional Summary</h4>
+                    <div class="grid grid-cols-4 gap-2 text-center">
+                        <div class="p-2 bg-blue-50 rounded">
+                            <div class="text-sm font-bold text-blue-900">{{ meal|calculate_total_calories|floatformat:0 }}</div>
+                            <div class="text-xs text-blue-600">Calories</div>
+                        </div>
+                        <div class="p-2 bg-green-50 rounded">
+                            <div class="text-sm font-bold text-green-900">{{ meal|calculate_total_proteins|floatformat:1 }}g</div>
+                            <div class="text-xs text-green-600">Protein</div>
+                        </div>
+                        <div class="p-2 bg-yellow-50 rounded">
+                            <div class="text-sm font-bold text-yellow-900">{{ meal|calculate_total_carbs|floatformat:1 }}g</div>
+                            <div class="text-xs text-yellow-600">Carbs</div>
+                        </div>
+                        <div class="p-2 bg-red-50 rounded">
+                            <div class="text-sm font-bold text-red-900">{{ meal|calculate_total_fats|floatformat:1 }}g</div>
+                            <div class="text-xs text-red-600">Fat</div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-span-full">
+            <div class="bg-white rounded-lg shadow p-12 text-center">
+                <div class="mx-auto w-24 h-24 text-gray-400">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                    </svg>
+                </div>
+                <h3 class="mt-4 text-lg font-medium text-gray-900">No meals yet</h3>
+                <p class="mt-2 text-gray-600">Create your first meal to get started.</p>
+                <div class="mt-6">
+                    <button onclick="openMealModal()" 
+                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                        Create Your First Meal
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Meal Modal -->
+<div id="mealModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-medium text-gray-900" id="mealModalTitle">Add Meal</h3>
+                    <button onclick="closeMealModal()" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <form id="mealForm" class="p-6">
+                <input type="hidden" id="meal_id" name="meal_id">
+                <div class="space-y-4">
+                    <div>
+                        <label for="meal_name" class="block text-sm font-medium text-gray-700">Name *</label>
+                        <input type="text" id="meal_name" name="name" required
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label for="meal_diet" class="block text-sm font-medium text-gray-700">Diet *</label>
+                        <select id="meal_diet" name="diet_id" required
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Select a diet</option>
+                            {% for diet in diets %}
+                            <option value="{{ diet.id }}">{{ diet.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="meal_description" class="block text-sm font-medium text-gray-700">Description</label>
+                        <textarea id="meal_description" name="description" rows="3"
+                                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                  placeholder="Optional description of the meal..."></textarea>
+                    </div>
+                </div>
+                
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" onclick="closeMealModal()" 
+                            class="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                            class="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                        <span id="mealSubmitButtonText">Add Meal</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Ingredient Modal -->
+<div id="addIngredientModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-medium text-gray-900">Add Ingredient</h3>
+                    <button onclick="closeAddIngredientModal()" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <form id="addIngredientForm" class="p-6">
+                <input type="hidden" id="target_meal_id" name="meal_id">
+                <div class="space-y-4">
+                    <div>
+                        <label for="ingredient_select" class="block text-sm font-medium text-gray-700">Ingredient *</label>
+                        <select id="ingredient_select" name="ingredient_id" required
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Select an ingredient</option>
+                            {% for ingredient in ingredients %}
+                            <option value="{{ ingredient.id }}">{{ ingredient.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="ingredient_quantity" class="block text-sm font-medium text-gray-700">Quantity (grams) *</label>
+                        <input type="number" id="ingredient_quantity" name="quantity" step="0.1" min="0" value="100" required
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+                
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" onclick="closeAddIngredientModal()" 
+                            class="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                            class="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                        Add Ingredient
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Quantity Modal -->
+<div id="editQuantityModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-sm w-full">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Edit Quantity</h3>
+            </div>
+            <form id="editQuantityForm" class="p-6">
+                <input type="hidden" id="edit_meal_ingredient_id" name="meal_ingredient_id">
+                <div class="space-y-4">
+                    <div>
+                        <label for="edit_quantity" class="block text-sm font-medium text-gray-700">Quantity (grams) *</label>
+                        <input type="number" id="edit_quantity" name="quantity" step="0.1" min="0" required
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+                
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" onclick="closeEditQuantityModal()" 
+                            class="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                            class="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                        Update
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Meal management functions
+function openMealModal() {
+    document.getElementById('mealModalTitle').textContent = 'Add Meal';
+    document.getElementById('mealSubmitButtonText').textContent = 'Add Meal';
+    document.getElementById('mealForm').reset();
+    document.getElementById('meal_id').value = '';
+    document.getElementById('mealModal').classList.remove('hidden');
+}
+
+function closeMealModal() {
+    document.getElementById('mealModal').classList.add('hidden');
+    document.getElementById('mealForm').reset();
+}
+
+function editMeal(mealId) {
+    fetch(`/meals/meals/${mealId}/get/`, {
+        method: 'GET',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.id) {
+            document.getElementById('mealModalTitle').textContent = 'Edit Meal';
+            document.getElementById('mealSubmitButtonText').textContent = 'Update Meal';
+            document.getElementById('meal_id').value = data.id;
+            document.getElementById('meal_name').value = data.name;
+            document.getElementById('meal_diet').value = data.diet_id;
+            document.getElementById('meal_description').value = data.description || '';
+            
+            document.getElementById('mealModal').classList.remove('hidden');
+        } else {
+            alert('Error loading meal data');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error loading meal data');
+    });
+}
+
+function deleteMeal(mealId, mealName) {
+    if (!confirm(`Are you sure you want to delete "${mealName}"?`)) {
+        return;
+    }
+    
+    fetch(`/meals/meals/${mealId}/delete/`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.message) {
+            location.reload();
+        } else {
+            alert('Error deleting meal');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error deleting meal');
+    });
+}
+
+// Meal form submission
+document.getElementById('mealForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const mealId = formData.get('meal_id');
+    const data = {
+        name: formData.get('name'),
+        diet_id: formData.get('diet_id'),
+        description: formData.get('description') || ''
+    };
+    
+    const url = mealId ? `/meals/meals/${mealId}/update/` : '/meals/meals/create/';
+    const method = mealId ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.id) {
+            closeMealModal();
+            location.reload();
+        } else {
+            alert('Error saving meal: ' + JSON.stringify(data));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error saving meal');
+    });
+});
+
+// Ingredient management functions
+function openAddIngredientModal(mealId) {
+    document.getElementById('target_meal_id').value = mealId;
+    document.getElementById('addIngredientForm').reset();
+    document.getElementById('ingredient_quantity').value = '100';
+    document.getElementById('addIngredientModal').classList.remove('hidden');
+}
+
+function closeAddIngredientModal() {
+    document.getElementById('addIngredientModal').classList.add('hidden');
+    document.getElementById('addIngredientForm').reset();
+}
+
+function editIngredientQuantity(mealIngredientId, currentQuantity) {
+    document.getElementById('edit_meal_ingredient_id').value = mealIngredientId;
+    document.getElementById('edit_quantity').value = currentQuantity;
+    document.getElementById('editQuantityModal').classList.remove('hidden');
+}
+
+function closeEditQuantityModal() {
+    document.getElementById('editQuantityModal').classList.add('hidden');
+    document.getElementById('editQuantityForm').reset();
+}
+
+function removeIngredient(mealIngredientId, ingredientName) {
+    if (!confirm(`Are you sure you want to remove "${ingredientName}" from this meal?`)) {
+        return;
+    }
+    
+    fetch(`/meals/meal-ingredients/${mealIngredientId}/remove/`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.message) {
+            location.reload();
+        } else {
+            alert('Error removing ingredient');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error removing ingredient');
+    });
+}
+
+// Add ingredient form submission
+document.getElementById('addIngredientForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const mealId = formData.get('meal_id');
+    const data = {
+        ingredient_id: formData.get('ingredient_id'),
+        quantity: parseFloat(formData.get('quantity'))
+    };
+    
+    fetch(`/meals/meals/${mealId}/add-ingredient/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.id) {
+            closeAddIngredientModal();
+            location.reload();
+        } else {
+            alert('Error adding ingredient: ' + JSON.stringify(data));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error adding ingredient');
+    });
+});
+
+// Edit quantity form submission
+document.getElementById('editQuantityForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const mealIngredientId = formData.get('meal_ingredient_id');
+    const data = {
+        quantity: parseFloat(formData.get('quantity'))
+    };
+    
+    fetch(`/meals/meal-ingredients/${mealIngredientId}/update/`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.id) {
+            closeEditQuantityModal();
+            location.reload();
+        } else {
+            alert('Error updating quantity: ' + JSON.stringify(data));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error updating quantity');
+    });
+});
+
+// Get CSRF token
+function getCookie(name) {
+    const metaToken = document.querySelector('meta[name="csrf-token"]');
+    if (metaToken && name === 'csrftoken') {
+        return metaToken.getAttribute('content');
+    }
+    
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

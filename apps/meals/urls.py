@@ -6,14 +6,15 @@ app_name = 'meals'
 urlpatterns = [
     # Web page views
     path('', views.meals_dashboard, name='dashboard'),
-    path('preferences/', views.preferences_page, name='preferences-page'),
-    path('ingredients/', views.ingredients_page, name='ingredients-page'),
+    path('preferences-page/', views.preferences_page, name='preferences-page'),
+    path('ingredients-page/', views.ingredients_page, name='ingredients-page'),
+    path('meals-page/', views.meals_management_page, name='meals'),
     
     # Diet endpoints
     path('diets/', views.DietListView.as_view(), name='diet-list'),
     path('diets/<int:pk>/', views.DietDetailView.as_view(), name='diet-detail'),
     
-    # Meal endpoints
+    # Meal endpoints (API)
     path('meals/', views.MealListView.as_view(), name='meal-list'),
     path('meals/<int:pk>/', views.MealDetailView.as_view(), name='meal-detail'),
     
@@ -21,7 +22,7 @@ urlpatterns = [
     path('categories/', views.CategoryListView.as_view(), name='category-list'),
     path('categories/<int:pk>/', views.CategoryDetailView.as_view(), name='category-detail'),
     
-    # Ingredient endpoints
+    # Ingredient endpoints (API)
     path('ingredients/', views.IngredientListView.as_view(), name='ingredient-list'),
     path('ingredients/<int:pk>/', views.IngredientDetailView.as_view(), name='ingredient-detail'),
     path('ingredients/search/', views.IngredientSearchView.as_view(), name='ingredient-search'),
@@ -35,7 +36,7 @@ urlpatterns = [
     path('meal-records/', views.MealRecordListView.as_view(), name='meal-record-list'),
     path('meal-records/<int:pk>/', views.MealRecordDetailView.as_view(), name='meal-record-detail'),
     
-    # Meal preference endpoints (main focus)
+    # Meal preference endpoints (API)
     path('preferences/', views.MealPreferenceListView.as_view(), name='meal-preference-list'),
     path('preferences/<int:pk>/', views.MealPreferenceDetailView.as_view(), name='meal-preference-detail'),
     path('preferences/type/<str:preference_type>/', views.MealPreferenceByTypeView.as_view(), name='meal-preference-by-type'),
@@ -51,4 +52,13 @@ urlpatterns = [
     path('ingredients/create/', views.create_ingredient, name='create-ingredient'),
     path('ingredients/<int:ingredient_id>/update/', views.update_ingredient, name='update-ingredient'),
     path('ingredients/<int:ingredient_id>/get/', views.get_ingredient, name='get-ingredient'),
+    
+    # Meals management endpoints
+    path('meals/create/', views.create_meal, name='create-meal'),
+    path('meals/<int:meal_id>/update/', views.update_meal, name='update-meal'),
+    path('meals/<int:meal_id>/get/', views.get_meal, name='get-meal'),
+    path('meals/<int:meal_id>/delete/', views.delete_meal, name='delete-meal'),
+    path('meals/<int:meal_id>/add-ingredient/', views.add_ingredient_to_meal, name='add-ingredient-to-meal'),
+    path('meal-ingredients/<int:meal_ingredient_id>/update/', views.update_meal_ingredient, name='update-meal-ingredient'),
+    path('meal-ingredients/<int:meal_ingredient_id>/remove/', views.remove_ingredient_from_meal, name='remove-ingredient-from-meal'),
 ]
