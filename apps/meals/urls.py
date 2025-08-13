@@ -46,4 +46,9 @@ urlpatterns = [
     # Quick preference endpoints
     path('preferences/quick-update/', views.quick_preference_update, name='quick-preference-update'),
     path('preferences/quick-delete/<int:ingredient_id>/', views.quick_preference_delete, name='quick-preference-delete'),
+    
+    # Ingredient CRUD endpoints
+    path('ingredients/create/', views.create_ingredient, name='create-ingredient'),
+    path('ingredients/<int:ingredient_id>/update/', views.update_ingredient, name='update-ingredient'),
+    path('ingredients/<int:ingredient_id>/get/', views.get_ingredient, name='get-ingredient'),
 ]

@@ -11,9 +11,18 @@
                 <h1 class="text-3xl font-bold text-gray-900 mb-2">Ingredients</h1>
                 <p class="text-gray-600">Browse and search for ingredients to add to your preferences</p>
             </div>
-            <a href="{% url 'meals:dashboard' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                Back to Dashboard
-            </a>
+            <div class="flex space-x-3">
+                <button onclick="openIngredientModal()" 
+                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                    Add Ingredient
+                </button>
+                <a href="{% url 'meals:dashboard' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    Back to Dashboard
+                </a>
+            </div>
         </div>
     </div>
 
@@ -143,7 +152,11 @@
                 {% endif %}
 
                 <!-- Action Buttons -->
-                <div class="flex justify-end">
+                <div class="flex justify-end space-x-2">
+                    <button onclick="editIngredient({{ ingredient.id }})" 
+                            class="px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Edit
+                    </button>
                     <button onclick="viewDetails({{ ingredient.id }})" 
                             class="px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                         Details
@@ -214,7 +227,98 @@
     {% endif %}
 </div>
 
-
+<!-- Ingredient Modal -->
+<div id="ingredientModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-screen overflow-y-auto">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-medium text-gray-900" id="modalTitle">Add Ingredient</h3>
+                    <button onclick="closeIngredientModal()" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <form id="ingredientForm" class="p-6">
+                <input type="hidden" id="ingredient_id" name="ingredient_id">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="md:col-span-2">
+                        <label for="ingredient_name" class="block text-sm font-medium text-gray-700">Name *</label>
+                        <input type="text" id="ingredient_name" name="name" required
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <div class="md:col-span-2">
+                        <label for="ingredient_category" class="block text-sm font-medium text-gray-700">Category</label>
+                        <select id="ingredient_category" name="category_id"
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Select a category</option>
+                            {% for category in categories %}
+                            <option value="{{ category.id }}">{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="ingredient_calories" class="block text-sm font-medium text-gray-700">Calories (per 100g) *</label>
+                        <input type="number" id="ingredient_calories" name="calories" step="0.1" required
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label for="ingredient_proteins" class="block text-sm font-medium text-gray-700">Proteins (g per 100g) *</label>
+                        <input type="number" id="ingredient_proteins" name="proteins" step="0.1" required
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label for="ingredient_carbs" class="block text-sm font-medium text-gray-700">Carbohydrates (g per 100g) *</label>
+                        <input type="number" id="ingredient_carbs" name="carbs" step="0.1" required
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label for="ingredient_fats" class="block text-sm font-medium text-gray-700">Fats (g per 100g) *</label>
+                        <input type="number" id="ingredient_fats" name="fats" step="0.1" required
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label for="ingredient_fibers" class="block text-sm font-medium text-gray-700">Fibers (g per 100g)</label>
+                        <input type="number" id="ingredient_fibers" name="fibers" step="0.1" value="0"
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label for="ingredient_sugars" class="block text-sm font-medium text-gray-700">Sugars (g per 100g)</label>
+                        <input type="number" id="ingredient_sugars" name="sugars" step="0.1" value="0"
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <div class="md:col-span-2">
+                        <label for="ingredient_description" class="block text-sm font-medium text-gray-700">Description</label>
+                        <textarea id="ingredient_description" name="description" rows="3"
+                                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                  placeholder="Optional description of the ingredient..."></textarea>
+                    </div>
+                </div>
+                
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" onclick="closeIngredientModal()" 
+                            class="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                            class="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                        <span id="submitButtonText">Add Ingredient</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 <script>
 // Set preference using emoji buttons
@@ -318,6 +422,103 @@ function updatePreferenceUI(ingredientId, preferenceType) {
         }
     }
 }
+
+// Open ingredient modal for adding new ingredient
+function openIngredientModal() {
+    document.getElementById('modalTitle').textContent = 'Add Ingredient';
+    document.getElementById('submitButtonText').textContent = 'Add Ingredient';
+    document.getElementById('ingredientForm').reset();
+    document.getElementById('ingredient_id').value = '';
+    document.getElementById('ingredientModal').classList.remove('hidden');
+}
+
+// Close ingredient modal
+function closeIngredientModal() {
+    document.getElementById('ingredientModal').classList.add('hidden');
+    document.getElementById('ingredientForm').reset();
+}
+
+// Edit ingredient
+function editIngredient(ingredientId) {
+    fetch(`/meals/ingredients/${ingredientId}/get/`, {
+        method: 'GET',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.id) {
+            // Populate form with ingredient data
+            document.getElementById('modalTitle').textContent = 'Edit Ingredient';
+            document.getElementById('submitButtonText').textContent = 'Update Ingredient';
+            document.getElementById('ingredient_id').value = data.id;
+            document.getElementById('ingredient_name').value = data.name;
+            document.getElementById('ingredient_category').value = data.category_id || '';
+            document.getElementById('ingredient_calories').value = data.calories;
+            document.getElementById('ingredient_proteins').value = data.proteins;
+            document.getElementById('ingredient_carbs').value = data.carbs;
+            document.getElementById('ingredient_fats').value = data.fats;
+            document.getElementById('ingredient_fibers').value = data.fibers;
+            document.getElementById('ingredient_sugars').value = data.sugars;
+            document.getElementById('ingredient_description').value = data.description || '';
+            
+            document.getElementById('ingredientModal').classList.remove('hidden');
+        } else {
+            alert('Error loading ingredient data');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error loading ingredient data');
+    });
+}
+
+// Handle ingredient form submission
+document.getElementById('ingredientForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const ingredientId = formData.get('ingredient_id');
+    const data = {
+        name: formData.get('name'),
+        category_id: formData.get('category_id') || null,
+        calories: parseFloat(formData.get('calories')),
+        proteins: parseFloat(formData.get('proteins')),
+        carbs: parseFloat(formData.get('carbs')),
+        fats: parseFloat(formData.get('fats')),
+        fibers: parseFloat(formData.get('fibers') || 0),
+        sugars: parseFloat(formData.get('sugars') || 0),
+        description: formData.get('description') || ''
+    };
+    
+    const url = ingredientId ? `/meals/ingredients/${ingredientId}/update/` : '/meals/ingredients/create/';
+    const method = ingredientId ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.id) {
+            closeIngredientModal();
+            location.reload(); // Reload to show the new/updated ingredient
+        } else {
+            alert('Error saving ingredient: ' + JSON.stringify(data));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error saving ingredient');
+    });
+});
 
 // View ingredient details
 function viewDetails(ingredientId) {

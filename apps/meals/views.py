@@ -470,3 +470,56 @@ def quick_preference_delete(request, ingredient_id):
             {'error': 'Preference not found'}, 
             status=status.HTTP_404_NOT_FOUND
         )
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def create_ingredient(request):
+    """Create a new ingredient"""
+    serializer = IngredientSerializer(data=request.data)
+    if serializer.is_valid():
+        ingredient = serializer.save()
+        return Response({
+            'id': ingredient.id,
+            'name': ingredient.name,
+            'message': 'Ingredient created successfully'
+        }, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['PUT'])
+@permission_classes([permissions.IsAuthenticated])
+def update_ingredient(request, ingredient_id):
+    """Update an existing ingredient"""
+    try:
+        ingredient = Ingredient.objects.get(id=ingredient_id)
+    except Ingredient.DoesNotExist:
+        return Response(
+            {'error': 'Ingredient not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    serializer = IngredientSerializer(ingredient, data=request.data, partial=True)
+    if serializer.is_valid():
+        ingredient = serializer.save()
+        return Response({
+            'id': ingredient.id,
+            'name': ingredient.name,
+            'message': 'Ingredient updated successfully'
+        })
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def get_ingredient(request, ingredient_id):
+    """Get ingredient details for editing"""
+    try:
+        ingredient = Ingredient.objects.get(id=ingredient_id)
+        serializer = IngredientSerializer(ingredient)
+        return Response(serializer.data)
+    except Ingredient.DoesNotExist:
+        return Response(
+            {'error': 'Ingredient not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
