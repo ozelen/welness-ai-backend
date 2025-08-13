@@ -1,214 +1,165 @@
 # Meals App
 
-This Django app provides comprehensive meal management functionality including diets, meals, ingredients, and user meal preferences.
+A comprehensive meal management system with nutritional tracking, diet planning, and Google Calendar integration.
+
+## Features
+
+### Core Meal Management
+- **Meal Creation & Editing**: Create and edit meals with descriptions
+- **Ingredient Management**: Add ingredients to meals with specific quantities (in grams)
+- **Nutritional Tracking**: Automatic calculation of calories, proteins, carbs, and fats
+- **Diet Association**: Link meals to specific diets and goals
+
+### Diet Management
+- **Active Diet System**: Only one diet can be active per user at a time
+- **Diet Timeline**: Track diet start/end dates and notes
+- **Goal Integration**: Connect diets to fitness goals (weight loss, muscle gain, etc.)
+- **Diet Filtering**: Filter meals by diet on the management page
+
+### Meal Scheduling & Calendar Integration
+- **Quick Scheduling**: One-click meal scheduling with default settings
+- **Google Calendar Ready**: Automatic event creation with proper formatting
+- **Recurrence Support**: Daily and weekly recurring meals
+- **Meal Types**: Different meal categories (regular, cheat, refeed, pre/post-workout, snack)
+- **Visual Indicators**: Clear UI showing scheduled vs unscheduled meals
+
+### Preference System
+- **Emoji-based Preferences**: Quick preference selection with emojis (❤️, 👍, 👎, 😡, 🚫, ⚠️)
+- **Ingredient Preferences**: Track user preferences for ingredients
+- **Quick Actions**: Add, update, or remove preferences with single clicks
 
 ## Models
 
-### Core Models
-- **Diet**: User's dietary plans with nutritional targets
-- **Meal**: Individual meals within a diet
-- **Category**: Ingredient categories (e.g., Vegetables, Fruits, Proteins)
-- **Ingredient**: Food items with nutritional information
-- **MealIngredient**: Junction table linking meals to ingredients with quantities
-- **MealRecord**: User's meal consumption records
-- **MealPreference**: User's food preferences and restrictions
+### Diet
+- `name`, `user`, `goal` - Basic diet information
+- `day_proteins_g`, `day_fats_g`, `day_carbohydrates_g`, `day_calories_kcal` - Daily targets
+- `is_active` - Only one diet active per user
+- `start_date`, `end_date`, `notes` - Diet timeline tracking
 
-### MealPreference Model
+### Meal
+- `name`, `description`, `diet` - Basic meal information
+- `is_scheduled`, `start_date`, `start_time`, `duration_minutes` - Scheduling
+- `recurrence_type`, `recurrence_until` - Recurrence settings
+- `meal_type` - Meal category (regular, cheat, refeed, etc.)
+- `google_calendar_event_id`, `last_synced_to_calendar` - Calendar integration
 
-The `MealPreference` model is the core feature for managing user food preferences:
+### Ingredient
+- `name`, `category` - Basic ingredient information
+- `calories`, `proteins`, `carbohydrates`, `fats` - Nutritional values (per 100g)
 
-```python
-PREFERENCE_TYPES = [
-    ('love', 'Love'),
-    ('like', 'Like'),
-    ('dislike', 'Dislike'),
-    ('hate', 'Hate'),
-    ('restriction', 'Restriction'),
-    ('allergy', 'Allergy')
-]
-```
+### MealIngredient
+- `meal`, `ingredient`, `quantity` - Links meals to ingredients with quantities
+
+### MealPreference
+- `user`, `ingredient`, `preference_type` - User preferences for ingredients
 
 ## API Endpoints
 
-### Meal Preferences (Main Feature)
+### Meal Management
+- `GET /meals/meals/` - List meals
+- `POST /meals/meals/` - Create meal
+- `GET /meals/meals/{id}/` - Get meal details
+- `PUT /meals/meals/{id}/` - Update meal
+- `DELETE /meals/meals/{id}/` - Delete meal
 
-#### List/Create Preferences
-- **GET** `/meals/preferences/` - List user's meal preferences
-- **POST** `/meals/preferences/` - Create new meal preference
-
-**POST Data:**
-```json
-{
-    "ingredient_id": 1,
-    "preference_type": "love",
-    "description": "I love this ingredient!"
-}
-```
-
-Or create with new ingredient:
-```json
-{
-    "ingredient_name": "New Ingredient",
-    "preference_type": "dislike",
-    "description": "I don't like this"
-}
-```
-
-#### Individual Preference Management
-- **GET** `/meals/preferences/{id}/` - Get specific preference
-- **PUT/PATCH** `/meals/preferences/{id}/` - Update preference
-- **DELETE** `/meals/preferences/{id}/delete/` - Delete preference
-
-#### Filtered Views
-- **GET** `/meals/preferences/type/{type}/` - Get preferences by type (love, like, dislike, etc.)
-- **GET** `/meals/preferences/summary/` - Get preference statistics
-
-**Summary Response:**
-```json
-{
-    "total_preferences": 10,
-    "by_type": {
-        "love": 3,
-        "like": 4,
-        "dislike": 2,
-        "hate": 1
-    },
-    "recent_additions": [...]
-}
-```
-
-#### Bulk Operations
-- **POST** `/meals/preferences/bulk-update/` - Update multiple preferences
-
-**Bulk Update Data:**
-```json
-{
-    "preferences": [
-        {
-            "id": 1,
-            "preference_type": "love",
-            "description": "Updated description"
-        }
-    ]
-}
-```
+### Meal Scheduling
+- `POST /meals/meals/{id}/schedule/` - Schedule meal
+- `DELETE /meals/meals/{id}/unschedule/` - Unschedule meal
 
 ### Ingredient Management
+- `GET /meals/ingredients/` - List ingredients
+- `POST /meals/ingredients/` - Create ingredient
+- `PUT /meals/ingredients/{id}/` - Update ingredient
+- `GET /meals/ingredients/{id}/` - Get ingredient details
 
-#### Search and Suggestions
-- **GET** `/meals/ingredients/search/?q=apple` - Search ingredients
-- **GET** `/meals/ingredients/suggestions/?q=apple` - Get ingredient suggestions (excludes user's existing preferences)
+### Meal Ingredients
+- `POST /meals/meals/{id}/ingredients/` - Add ingredient to meal
+- `PUT /meals/meals/{id}/ingredients/{ingredient_id}/` - Update meal ingredient quantity
+- `DELETE /meals/meals/{id}/ingredients/{ingredient_id}/` - Remove ingredient from meal
 
-#### CRUD Operations
-- **GET** `/meals/ingredients/` - List all ingredients
-- **POST** `/meals/ingredients/` - Create new ingredient
-- **GET** `/meals/ingredients/{id}/` - Get specific ingredient
-- **PUT/PATCH** `/meals/ingredients/{id}/` - Update ingredient
-- **DELETE** `/meals/ingredients/{id}/` - Delete ingredient
+### Preferences
+- `POST /meals/preferences/` - Create/update preference
+- `DELETE /meals/preferences/{id}/` - Delete preference
 
-### Diet and Meal Management
+### Diet Management
+- `POST /meals/diets/{id}/set-active/` - Set active diet
 
-#### Diets
-- **GET** `/meals/diets/` - List user's diets
-- **POST** `/meals/diets/` - Create new diet
-- **GET** `/meals/diets/{id}/` - Get specific diet
-- **PUT/PATCH** `/meals/diets/{id}/` - Update diet
-- **DELETE** `/meals/diets/{id}/` - Delete diet
+## Calendar Integration
 
-#### Meals
-- **GET** `/meals/meals/` - List user's meals
-- **POST** `/meals/meals/` - Create new meal
-- **GET** `/meals/meals/{id}/` - Get specific meal
-- **PUT/PATCH** `/meals/meals/{id}/` - Update meal
-- **DELETE** `/meals/meals/{id}/` - Delete meal
+### Google Calendar Service
+The app includes a `GoogleCalendarService` class that handles:
+- Event creation with proper Google Calendar formatting
+- Recurrence rule generation (RRULE)
+- Color coding based on meal types
+- Bi-directional sync preparation
 
-#### Meal Ingredients
-- **GET** `/meals/meals/{meal_id}/ingredients/` - List meal ingredients
-- **POST** `/meals/meals/{meal_id}/ingredients/` - Add ingredient to meal
-- **GET** `/meals/meal-ingredients/{id}/` - Get specific meal ingredient
-- **PUT/PATCH** `/meals/meal-ingredients/{id}/` - Update meal ingredient
-- **DELETE** `/meals/meal-ingredients/{id}/` - Remove ingredient from meal
+### Event Format
+- **Summary**: "Meal: {meal_name}"
+- **Description**: Includes diet name, meal type, and calories
+- **Duration**: Configurable (default 30 minutes)
+- **Colors**: Different colors for different meal types
+- **Recurrence**: Daily/weekly patterns with end dates
 
-### Meal Records
-- **GET** `/meals/meal-records/` - List user's meal records
-- **POST** `/meals/meal-records/` - Create meal record
-- **GET** `/meals/meal-records/{id}/` - Get specific meal record
-- **PUT/PATCH** `/meals/meal-records/{id}/` - Update meal record
-- **DELETE** `/meals/meal-records/{id}/` - Delete meal record
+### Future Enhancements
+- Google OAuth integration
+- Bi-directional sync (calendar → app)
+- Advanced scheduling UI
+- Multiple calendar support
 
-## Usage Examples
+## Usage
 
-### Creating a Meal Preference
+### Quick Meal Scheduling
+1. Navigate to the meals management page
+2. Click the clock icon on any meal
+3. Meal is automatically scheduled for today at 12:00 PM
+4. Green calendar icon appears to indicate scheduled status
 
-```python
-import requests
+### Managing Preferences
+1. Go to the ingredients page
+2. Click emoji buttons to set preferences
+3. Use the X button to remove preferences
+4. Click "Details" for advanced preference options
 
-# Create a preference for an existing ingredient
-response = requests.post('/meals/preferences/', {
-    'ingredient_id': 1,
-    'preference_type': 'love',
-    'description': 'I love carrots!'
-})
+### Diet Management
+1. Use the diet filter dropdown to view meals by diet
+2. Active diet is highlighted with "(Active)" label
+3. Click "Change Active Diet" to switch active diets
+4. Only one diet can be active at a time
 
-# Create a preference with a new ingredient
-response = requests.post('/meals/preferences/', {
-    'ingredient_name': 'Quinoa',
-    'preference_type': 'like',
-    'description': 'Good protein source'
-})
-```
+## Development
 
-### Getting User's Preferences Summary
-
-```python
-response = requests.get('/meals/preferences/summary/')
-summary = response.json()
-
-print(f"Total preferences: {summary['total_preferences']}")
-print(f"Loved foods: {summary['by_type']['love']}")
-```
-
-### Searching for Ingredients
-
-```python
-# Search for ingredients
-response = requests.get('/meals/ingredients/search/?q=apple')
-ingredients = response.json()
-
-# Get suggestions (excluding user's existing preferences)
-response = requests.get('/meals/ingredients/suggestions/?q=apple')
-suggestions = response.json()['suggestions']
-```
-
-## Authentication
-
-All endpoints require authentication. Include the JWT token in the Authorization header:
-
-```
-Authorization: Bearer <your_jwt_token>
-```
-
-## Admin Interface
-
-The admin interface provides comprehensive management for all models:
-
-- **MealPreference**: Filter by user, preference type, and ingredient
-- **Ingredient**: Search by name, filter by category
-- **Meal**: Inline editing of meal ingredients
-- **Diet**: User-specific diet management
-
-## Testing
-
-Run the tests with:
-
+### Running the App
 ```bash
-python manage.py test meals
+# Using the Makefile
+make run
+
+# Or manually
+cd apps
+uv run manage.py runserver
 ```
 
-The test suite covers:
-- Model creation and validation
-- API endpoint functionality
-- Authentication requirements
-- CRUD operations for meal preferences
-- Bulk operations
-- Search and filtering 
+### Database Migrations
+```bash
+make makemigrations
+make migrate
+```
+
+### Creating Test Data
+```bash
+# Set initial active diet for existing users
+uv run manage.py set_initial_active_diet
+```
+
+## Templates
+
+### Main Templates
+- `dashboard.html` - Main meals dashboard with stats
+- `meals.html` - Meal management page with CRUD operations
+- `ingredients.html` - Ingredient management with preferences
+- `preferences.html` - Preference management page
+
+### Key Features
+- Responsive design with Tailwind CSS
+- Real-time updates with JavaScript
+- Modal-based forms for better UX
+- Visual indicators for scheduled meals and active diets 

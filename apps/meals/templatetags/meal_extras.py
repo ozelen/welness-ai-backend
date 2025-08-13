@@ -59,4 +59,17 @@ def calculate_total_fats(meal):
     for meal_ingredient in meal.mealingredient_set.all():
         ratio = meal_ingredient.quantity / 100
         total += meal_ingredient.ingredient.fats * ratio
-    return total 
+    return total
+
+@register.filter
+def format_recurrence(recurrence_type):
+    """Format recurrence type for display"""
+    recurrence_map = {
+        'daily': 'Daily',
+        'weekly': 'Weekly', 
+        'weekday': 'Weekdays',
+        'weekend': 'Weekends',
+        'custom': 'Custom',
+        'none': ''
+    }
+    return recurrence_map.get(recurrence_type, recurrence_type) 

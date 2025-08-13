@@ -48,7 +48,7 @@ class DietSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'user', 'goal', 'goal_id', 'day_proteins_g',
             'day_fats_g', 'day_carbohydrates_g', 'day_calories_kcal',
-            'is_active', 'created_at', 'updated_at'
+            'is_active', 'start_date', 'end_date', 'notes', 'created_at', 'updated_at'
         ]
 
 
@@ -73,7 +73,8 @@ class MealSerializer(serializers.ModelSerializer):
         model = Meal
         fields = [
             'id', 'name', 'description', 'diet', 'diet_id',
-            'ingredients', 'created_at', 'updated_at'
+            'ingredients', 'is_scheduled', 'start_date', 'start_time', 'duration_minutes',
+            'recurrence_type', 'recurrence_until', 'meal_type', 'created_at', 'updated_at'
         ]
 
 

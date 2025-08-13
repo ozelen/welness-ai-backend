@@ -64,4 +64,8 @@ urlpatterns = [
     
     # Diet management endpoints
     path('diets/<int:diet_id>/set-active/', views.set_active_diet, name='set-active-diet'),
+    
+    # Meal scheduling endpoints
+    path('meals/<int:meal_id>/schedule/', views.schedule_meal, name='schedule-meal'),
+    path('meals/<int:meal_id>/unschedule/', views.unschedule_meal, name='unschedule-meal'),
 ]

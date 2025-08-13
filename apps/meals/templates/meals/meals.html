@@ -99,15 +99,48 @@
     <!-- Meals Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {% for meal in meals %}
-        <div class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-200">
+        <div class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-200 {% if meal.is_scheduled %}border-l-4 border-green-500{% endif %}" 
+             data-meal-id="{{ meal.id }}"
+             {% if meal.is_scheduled %}
+             data-schedule-date="{{ meal.start_date|date:'Y-m-d' }}"
+             data-schedule-time="{{ meal.start_time|time:'H:i' }}"
+             data-schedule-duration="{{ meal.duration_minutes }}"
+             data-schedule-type="{{ meal.meal_type }}"
+             data-schedule-recurrence="{{ meal.recurrence_type }}"
+             data-schedule-until="{{ meal.recurrence_until|date:'Y-m-d'|default:'' }}"
+             {% endif %}>
             <div class="p-6">
                 <div class="flex items-start justify-between mb-4">
                     <div class="flex-1">
-                        <h3 class="text-xl font-semibold text-gray-900">{{ meal.name }}</h3>
+                        <div class="flex items-center gap-2 mb-1">
+                            <h3 class="text-xl font-semibold text-gray-900">{{ meal.name }}</h3>
+                            {% if meal.is_scheduled %}
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                                {% if meal.recurrence_type != 'none' %}
+                                    <br><span class="text-green-600 text-xs">{{ meal.recurrence_type|format_recurrence }}&nbsp;</span>
+                                {% endif %}
+                                {% if meal.start_date %}
+                                    {% if meal.start_time %}
+                                        {% if meal.recurrence_type == 'none' %}
+                                            {{ meal.start_date|date:"M j" }} 
+                                        {% endif %}    
+                                        at {{ meal.start_time|time:"g:i A" }}
+                                    {% else %}
+                                        {{ meal.start_date|date:"M j" }}
+                                    {% endif %}
+                                {% else %}
+                                    Scheduled
+                                {% endif %}
+                            </span>
+                            {% endif %}
+                        </div>
                         <div class="flex items-center mt-1">
                             <p class="text-sm text-gray-600">{{ meal.diet.name }}</p>
                             {% if meal.diet.is_active %}
-                            <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                            <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
                                 Active
                             </span>
                             {% endif %}
@@ -117,6 +150,13 @@
                         {% endif %}
                     </div>
                     <div class="flex space-x-2 ml-4">
+                        <button onclick="scheduleMeal({{ meal.id }})" 
+                                class="{% if meal.is_scheduled %}text-green-400 hover:text-green-600{% else %}text-gray-400 hover:text-blue-600{% endif %} transition-colors duration-200"
+                                title="{% if meal.is_scheduled %}Edit schedule{% else %}Schedule meal{% endif %}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </button>
                         <button onclick="editMeal({{ meal.id }})" 
                                 class="text-gray-400 hover:text-blue-600 transition-colors duration-200"
                                 title="Edit meal">
@@ -357,6 +397,96 @@
                             class="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
                         Update
                     </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Schedule Meal Modal -->
+<div id="scheduleMealModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-medium text-gray-900">Schedule Meal</h3>
+                    <button onclick="closeScheduleMealModal()" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <form id="scheduleMealForm" class="p-6">
+                <input type="hidden" id="schedule_meal_id" name="meal_id">
+                <div class="space-y-4">
+                    <div>
+                        <label for="schedule_date" class="block text-sm font-medium text-gray-700">Date *</label>
+                        <input type="date" id="schedule_date" name="start_date" required
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label for="schedule_time" class="block text-sm font-medium text-gray-700">Time *</label>
+                        <input type="time" id="schedule_time" name="start_time" required
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label for="schedule_duration" class="block text-sm font-medium text-gray-700">Duration (minutes)</label>
+                        <input type="number" id="schedule_duration" name="duration_minutes" value="30" min="15" max="180" step="15"
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label for="schedule_meal_type" class="block text-sm font-medium text-gray-700">Meal Type</label>
+                        <select id="schedule_meal_type" name="meal_type"
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="regular">Regular Meal</option>
+                            <option value="cheat">Cheat Meal</option>
+                            <option value="refeed">Refeed Meal</option>
+                            <option value="pre_workout">Pre-Workout</option>
+                            <option value="post_workout">Post-Workout</option>
+                            <option value="snack">Snack</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="schedule_recurrence" class="block text-sm font-medium text-gray-700">Recurrence</label>
+                        <select id="schedule_recurrence" name="recurrence_type"
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="none">No Recurrence</option>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="weekday">Weekdays (Mon-Fri)</option>
+                            <option value="weekend">Weekends (Sat-Sun)</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                    </div>
+                    
+                    <div id="recurrence_until_div" class="hidden">
+                        <label for="schedule_recurrence_until" class="block text-sm font-medium text-gray-700">Until Date</label>
+                        <input type="date" id="schedule_recurrence_until" name="recurrence_until"
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+                
+                <div class="mt-6 flex justify-between">
+                    <button type="button" onclick="removeSchedule()" 
+                            class="px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50"
+                            id="removeScheduleBtn" style="display: none;">
+                        Remove Schedule
+                    </button>
+                    <div class="flex space-x-3">
+                        <button type="button" onclick="closeScheduleMealModal()" 
+                                class="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                            Cancel
+                        </button>
+                        <button type="submit" 
+                                class="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                            <span id="scheduleSubmitText">Schedule Meal</span>
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -635,6 +765,176 @@ function setActiveDiet(dietId) {
         alert('Error setting active diet');
     });
 }
+
+function scheduleMeal(mealId) {
+    // Open scheduling modal
+    document.getElementById('schedule_meal_id').value = mealId;
+    
+    // Check if meal is already scheduled
+    const mealCard = document.querySelector(`[data-meal-id="${mealId}"]`);
+    const isScheduled = mealCard && mealCard.classList.contains('border-green-500');
+    
+    if (isScheduled) {
+        // Load existing schedule data
+        loadExistingSchedule(mealId);
+        document.getElementById('scheduleSubmitText').textContent = 'Update Schedule';
+        document.getElementById('removeScheduleBtn').style.display = 'block';
+    } else {
+        // Set default values for new schedule
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('schedule_date').value = today;
+        document.getElementById('schedule_time').value = '12:00';
+        document.getElementById('schedule_duration').value = '30';
+        document.getElementById('schedule_meal_type').value = 'regular';
+        document.getElementById('schedule_recurrence').value = 'none';
+        document.getElementById('scheduleSubmitText').textContent = 'Schedule Meal';
+        document.getElementById('removeScheduleBtn').style.display = 'none';
+    }
+    
+    // Show the modal
+    document.getElementById('scheduleMealModal').classList.remove('hidden');
+}
+
+function loadExistingSchedule(mealId) {
+    // Get the meal card element
+    const mealCard = document.querySelector(`[data-meal-id="${mealId}"]`);
+    if (!mealCard) return;
+    
+    // Load scheduling data from data attributes
+    const scheduleDate = mealCard.dataset.scheduleDate;
+    const scheduleTime = mealCard.dataset.scheduleTime;
+    const scheduleDuration = mealCard.dataset.scheduleDuration;
+    const scheduleType = mealCard.dataset.scheduleType;
+    const scheduleRecurrence = mealCard.dataset.scheduleRecurrence;
+    const scheduleUntil = mealCard.dataset.scheduleUntil;
+    
+    // Populate the form fields
+    if (scheduleDate) {
+        document.getElementById('schedule_date').value = scheduleDate;
+    }
+    
+    if (scheduleTime) {
+        document.getElementById('schedule_time').value = scheduleTime;
+    }
+    
+    if (scheduleDuration) {
+        document.getElementById('schedule_duration').value = scheduleDuration;
+    }
+    
+    if (scheduleType) {
+        document.getElementById('schedule_meal_type').value = scheduleType;
+    }
+    
+    if (scheduleRecurrence) {
+        document.getElementById('schedule_recurrence').value = scheduleRecurrence;
+        // Show the recurrence until field if it's not 'none'
+        if (scheduleRecurrence !== 'none') {
+            document.getElementById('recurrence_until_div').classList.remove('hidden');
+        }
+    }
+    
+    if (scheduleUntil) {
+        document.getElementById('schedule_recurrence_until').value = scheduleUntil;
+    }
+}
+
+function removeSchedule() {
+    const mealId = document.getElementById('schedule_meal_id').value;
+    
+    if (!confirm('Are you sure you want to remove this schedule? This will delete the meal from your calendar.')) {
+        return;
+    }
+    
+    fetch(`/meals/meals/${mealId}/unschedule/`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.id) {
+            closeScheduleMealModal();
+            location.reload();
+        } else {
+            alert('Error removing schedule: ' + JSON.stringify(data));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error removing schedule');
+    });
+}
+
+function closeScheduleMealModal() {
+    document.getElementById('scheduleMealModal').classList.add('hidden');
+    document.getElementById('scheduleMealForm').reset();
+}
+
+function openScheduleMealModal() {
+    document.getElementById('scheduleMealModal').classList.remove('hidden');
+}
+
+
+
+// Schedule meal form submission
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('scheduleMealForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const mealId = formData.get('meal_id');
+        
+        const data = {
+            is_scheduled: true,
+            start_date: formData.get('start_date'),
+            start_time: formData.get('start_time') + ':00', // Add seconds
+            duration_minutes: parseInt(formData.get('duration_minutes')),
+            recurrence_type: formData.get('recurrence_type'),
+            meal_type: formData.get('meal_type')
+        };
+        
+        // Add recurrence until date if provided
+        const recurrenceUntil = formData.get('recurrence_until');
+        if (recurrenceUntil && data.recurrence_type !== 'none') {
+            data.recurrence_until = recurrenceUntil;
+        }
+        
+        fetch(`/meals/meals/${mealId}/schedule/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.id) {
+                closeScheduleMealModal();
+                location.reload();
+            } else {
+                alert('Error scheduling meal: ' + JSON.stringify(data));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error scheduling meal');
+        });
+    });
+
+    // Show/hide recurrence until field based on recurrence type
+    document.getElementById('schedule_recurrence').addEventListener('change', function() {
+        const recurrenceUntilDiv = document.getElementById('recurrence_until_div');
+        if (this.value !== 'none') {
+            recurrenceUntilDiv.classList.remove('hidden');
+        } else {
+            recurrenceUntilDiv.classList.add('hidden');
+        }
+    });
+});
 
 // Get CSRF token
 function getCookie(name) {

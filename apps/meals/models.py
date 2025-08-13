@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
 from goals.models import Goal
 
 class Diet(models.Model):
@@ -11,6 +12,9 @@ class Diet(models.Model):
     day_carbohydrates_g = models.FloatField()
     day_calories_kcal = models.FloatField()
     is_active = models.BooleanField(default=False)
+    start_date = models.DateField(default=timezone.now)
+    end_date = models.DateField(null=True, blank=True)
+    notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -27,11 +31,79 @@ class Meal(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField()
     diet = models.ForeignKey(Diet, on_delete=models.CASCADE)
+    
+    # Calendar scheduling
+    is_scheduled = models.BooleanField(default=False)
+    start_date = models.DateField(null=True, blank=True)
+    start_time = models.TimeField(null=True, blank=True)
+    duration_minutes = models.IntegerField(default=30)
+    
+    # Recurrence options
+    RECURRENCE_TYPES = [
+        ('none', 'No Recurrence'),
+        ('daily', 'Daily'),
+        ('weekly', 'Weekly'),
+        ('weekday', 'Weekdays (Mon-Fri)'),
+        ('weekend', 'Weekends (Sat-Sun)'),
+        ('custom', 'Custom'),
+    ]
+    recurrence_type = models.CharField(max_length=10, choices=RECURRENCE_TYPES, default='none')
+    recurrence_until = models.DateField(null=True, blank=True)
+    
+    # Google Calendar integration
+    google_calendar_event_id = models.CharField(max_length=255, blank=True)
+    last_synced_to_calendar = models.DateTimeField(null=True, blank=True)
+    
+    # Meal types
+    MEAL_TYPES = [
+        ('regular', 'Regular Meal'),
+        ('cheat', 'Cheat Meal'),
+        ('refeed', 'Refeed Meal'),
+        ('pre_workout', 'Pre-Workout'),
+        ('post_workout', 'Post-Workout'),
+        ('snack', 'Snack'),
+    ]
+    meal_type = models.CharField(max_length=20, choices=MEAL_TYPES, default='regular')
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.name
+    
+    def get_calendar_color_id(self):
+        """Get Google Calendar color ID based on meal type"""
+        color_map = {
+            'regular': '1',      # Blue
+            'cheat': '4',        # Red
+            'refeed': '6',       # Orange
+            'pre_workout': '2',  # Green
+            'post_workout': '3', # Purple
+            'snack': '5',        # Yellow
+        }
+        return color_map.get(self.meal_type, '1')
+    
+    def generate_rrule(self):
+        """Generate Google Calendar recurrence rule"""
+        if self.recurrence_type == 'none':
+            return None
+        
+        if self.recurrence_type == 'daily':
+            return {'freq': 'DAILY'}
+        
+        if self.recurrence_type == 'weekly':
+            return {'freq': 'WEEKLY'}
+        
+        return None
+    
+    def get_total_calories(self):
+        """Calculate total calories for this meal"""
+        total = 0
+        for meal_ingredient in self.mealingredient_set.all():
+            # Calculate based on quantity (assuming nutritional values are per 100g)
+            ratio = meal_ingredient.quantity / 100
+            total += meal_ingredient.ingredient.calories * ratio
+        return total
 
 class Category(models.Model):
     name = models.CharField(max_length=255)

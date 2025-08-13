@@ -763,3 +763,88 @@ def set_active_diet(request, diet_id):
             {'error': 'Diet not found'}, 
             status=status.HTTP_404_NOT_FOUND
         )
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def schedule_meal(request, meal_id):
+    """Schedule a meal and sync to Google Calendar"""
+    try:
+        meal = Meal.objects.get(id=meal_id, diet__user=request.user)
+    except Meal.DoesNotExist:
+        return Response(
+            {'error': 'Meal not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Update meal scheduling
+    meal.is_scheduled = request.data.get('is_scheduled', True)
+    
+    # Handle date field
+    start_date_str = request.data.get('start_date')
+    if start_date_str:
+        from datetime import datetime
+        meal.start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+    
+    # Handle time field
+    start_time_str = request.data.get('start_time')
+    if start_time_str:
+        from datetime import datetime
+        meal.start_time = datetime.strptime(start_time_str, '%H:%M:%S').time()
+    
+    meal.duration_minutes = request.data.get('duration_minutes', 30)
+    meal.recurrence_type = request.data.get('recurrence_type', 'none')
+    
+    # Handle recurrence_until field
+    recurrence_until_str = request.data.get('recurrence_until')
+    if recurrence_until_str:
+        from datetime import datetime
+        meal.recurrence_until = datetime.strptime(recurrence_until_str, '%Y-%m-%d').date()
+    
+    meal.meal_type = request.data.get('meal_type', 'regular')
+    
+    meal.save()
+    
+    # Sync to Google Calendar
+    from .services import sync_meal_to_calendar
+    calendar_event_id = sync_meal_to_calendar(meal)
+    
+    return Response({
+        'id': meal.id,
+        'name': meal.name,
+        'is_scheduled': meal.is_scheduled,
+        'calendar_event_id': calendar_event_id,
+        'message': 'Meal scheduled successfully'
+    })
+
+
+@api_view(['DELETE'])
+@permission_classes([permissions.IsAuthenticated])
+def unschedule_meal(request, meal_id):
+    """Unschedule a meal and remove from Google Calendar"""
+    try:
+        meal = Meal.objects.get(id=meal_id, diet__user=request.user)
+    except Meal.DoesNotExist:
+        return Response(
+            {'error': 'Meal not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Remove from Google Calendar
+    from .services import sync_meal_to_calendar
+    sync_meal_to_calendar(meal)  # This will delete the event
+    
+    # Clear scheduling
+    meal.is_scheduled = False
+    meal.start_date = None
+    meal.start_time = None
+    meal.recurrence_type = 'none'
+    meal.recurrence_until = None
+    meal.google_calendar_event_id = ""
+    meal.save()
+    
+    return Response({
+        'id': meal.id,
+        'name': meal.name,
+        'message': 'Meal unscheduled successfully'
+    })
