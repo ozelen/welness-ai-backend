@@ -534,7 +534,23 @@ def meals_management_page(request):
     
     # Get user's diets and meals
     diets = Diet.objects.filter(user=user)
-    meals = Meal.objects.filter(diet__user=user).select_related('diet').prefetch_related('mealingredient_set__ingredient')
+    
+    # Get selected diet filter
+    selected_diet_id = request.GET.get('diet')
+    
+    # Get active diet
+    active_diet = diets.filter(is_active=True).first()
+    
+    # Filter meals by diet if specified
+    if selected_diet_id:
+        meals = Meal.objects.filter(diet__user=user, diet_id=selected_diet_id).select_related('diet').prefetch_related('mealingredient_set__ingredient')
+    else:
+        # Use active diet if available, otherwise show all meals
+        if active_diet:
+            meals = Meal.objects.filter(diet__user=user, diet=active_diet).select_related('diet').prefetch_related('mealingredient_set__ingredient')
+            selected_diet_id = active_diet.id
+        else:
+            meals = Meal.objects.filter(diet__user=user).select_related('diet').prefetch_related('mealingredient_set__ingredient')
     
     # Get all ingredients for the ingredient selector
     ingredients = Ingredient.objects.all().select_related('category')
@@ -547,6 +563,7 @@ def meals_management_page(request):
         'meals': meals,
         'ingredients': ingredients,
         'categories': categories,
+        'selected_diet_id': selected_diet_id,
     }
     
     return render(request, 'meals/meals.html', context)
@@ -724,5 +741,25 @@ def remove_ingredient_from_meal(request, meal_ingredient_id):
     except MealIngredient.DoesNotExist:
         return Response(
             {'error': 'Meal ingredient not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def set_active_diet(request, diet_id):
+    """Set a diet as active for the user"""
+    try:
+        diet = Diet.objects.get(id=diet_id, user=request.user)
+        diet.is_active = True
+        diet.save()  # This will automatically deactivate other diets
+        return Response({
+            'id': diet.id,
+            'name': diet.name,
+            'message': 'Diet set as active successfully'
+        })
+    except Diet.DoesNotExist:
+        return Response(
+            {'error': 'Diet not found'}, 
             status=status.HTTP_404_NOT_FOUND
         )

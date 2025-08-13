@@ -48,7 +48,7 @@ class DietSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'user', 'goal', 'goal_id', 'day_proteins_g',
             'day_fats_g', 'day_carbohydrates_g', 'day_calories_kcal',
-            'created_at', 'updated_at'
+            'is_active', 'created_at', 'updated_at'
         ]
 
 

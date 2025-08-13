@@ -61,4 +61,7 @@ urlpatterns = [
     path('meals/<int:meal_id>/add-ingredient/', views.add_ingredient_to_meal, name='add-ingredient-to-meal'),
     path('meal-ingredients/<int:meal_ingredient_id>/update/', views.update_meal_ingredient, name='update-meal-ingredient'),
     path('meal-ingredients/<int:meal_ingredient_id>/remove/', views.remove_ingredient_from_meal, name='remove-ingredient-from-meal'),
+    
+    # Diet management endpoints
+    path('diets/<int:diet_id>/set-active/', views.set_active_diet, name='set-active-diet'),
 ]

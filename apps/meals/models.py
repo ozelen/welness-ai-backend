@@ -10,11 +10,18 @@ class Diet(models.Model):
     day_fats_g = models.FloatField()
     day_carbohydrates_g = models.FloatField()
     day_calories_kcal = models.FloatField()
+    is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
     def __str__(self):
         return self.name
+    
+    def save(self, *args, **kwargs):
+        # Ensure only one diet is active per user
+        if self.is_active:
+            Diet.objects.filter(user=self.user, is_active=True).exclude(id=self.id).update(is_active=False)
+        super().save(*args, **kwargs)
 
 class Meal(models.Model):
     name = models.CharField(max_length=255)

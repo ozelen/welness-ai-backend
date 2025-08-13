@@ -26,6 +26,76 @@
         </div>
     </div>
 
+    <!-- Diet Filter -->
+    <div class="bg-white rounded-lg shadow mb-8">
+        <div class="p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-medium text-gray-900">Filter by Diet</h2>
+                    <p class="text-sm text-gray-600">Select a diet to filter meals</p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <select id="dietFilter" onchange="filterByDiet()" 
+                            class="border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">All Diets</option>
+                        {% for diet in diets %}
+                        <option value="{{ diet.id }}" {% if selected_diet_id == diet.id %}selected{% endif %}>
+                            {{ diet.name }}{% if diet.is_active %} (Active){% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <button onclick="clearDietFilter()" 
+                            class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                        Clear Filter
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Active Diet Indicator -->
+            {% for diet in diets %}
+                {% if diet.is_active %}
+                <div class="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-green-800">
+                                Active Diet: {{ diet.name }}
+                            </p>
+                            <p class="text-sm text-green-700">
+                                Goal: {{ diet.goal.get_goal_type_display }}
+                            </p>
+                        </div>
+                        <div class="ml-auto">
+                            <button onclick="setActiveDiet({{ diet.id }})" 
+                                    class="text-sm text-green-600 hover:text-green-500 font-medium">
+                                Change Active Diet
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Meals Summary -->
+    <div class="mb-4">
+        <p class="text-sm text-gray-600">
+            {% if selected_diet_id %}
+                Showing {{ meals.count }} meal{{ meals.count|pluralize }} for 
+                {% for diet in diets %}
+                    {% if diet.id == selected_diet_id %}{{ diet.name }}{% endif %}
+                {% endfor %}
+            {% else %}
+                Showing {{ meals.count }} meal{{ meals.count|pluralize }} across all diets
+            {% endif %}
+        </p>
+    </div>
+
     <!-- Meals Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {% for meal in meals %}
@@ -34,7 +104,14 @@
                 <div class="flex items-start justify-between mb-4">
                     <div class="flex-1">
                         <h3 class="text-xl font-semibold text-gray-900">{{ meal.name }}</h3>
-                        <p class="text-sm text-gray-600">{{ meal.diet.name }}</p>
+                        <div class="flex items-center mt-1">
+                            <p class="text-sm text-gray-600">{{ meal.diet.name }}</p>
+                            {% if meal.diet.is_active %}
+                            <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                Active
+                            </span>
+                            {% endif %}
+                        </div>
                         {% if meal.description %}
                         <p class="text-sm text-gray-600 mt-1">{{ meal.description|truncatewords:20 }}</p>
                         {% endif %}
@@ -513,6 +590,51 @@ document.getElementById('editQuantityForm').addEventListener('submit', function(
         alert('Error updating quantity');
     });
 });
+
+// Diet filtering functions
+function filterByDiet() {
+    const dietSelect = document.getElementById('dietFilter');
+    const selectedDietId = dietSelect.value;
+    
+    // Build the URL with the selected diet
+    let url = window.location.pathname;
+    if (selectedDietId) {
+        url += '?diet=' + selectedDietId;
+    }
+    
+    window.location.href = url;
+}
+
+function clearDietFilter() {
+    window.location.href = window.location.pathname;
+}
+
+function setActiveDiet(dietId) {
+    if (!confirm('Are you sure you want to change the active diet? This will deactivate the current active diet.')) {
+        return;
+    }
+    
+    fetch(`/meals/diets/${dietId}/set-active/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.id) {
+            location.reload();
+        } else {
+            alert('Error setting active diet: ' + JSON.stringify(data));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error setting active diet');
+    });
+}
 
 // Get CSRF token
 function getCookie(name) {
