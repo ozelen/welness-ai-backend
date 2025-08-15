@@ -6,8 +6,9 @@ import logging
 import atexit
 import asyncio
 from .handlers import dps
+from telegrinder.modules import logger
 
-logger = logging.getLogger(__name__)
+logger.set_level("INFO")
 
 class TgBotController(BaseBotController):
     def __init__(self, bot_model):
@@ -38,6 +39,7 @@ class TgBotController(BaseBotController):
             # Start bot in a separate thread
             self.thread = threading.Thread(target=self.run, daemon=True)
             self.thread.start()
+            # self.bot_task = asyncio.run(self.client.run_forever())
             self.is_running = True
             logger.info("Bot started in background thread")
 
@@ -70,14 +72,18 @@ class TgBotController(BaseBotController):
         asyncio.set_event_loop(loop)
         
         try:
+            logger.info("Creating bot task")
+            self.is_running = True
             self.bot_task = loop.create_task(self.client.run_forever())
-            logger.info("Bot task created and running")
             loop.run_forever()
+            logger.info(f"Bot task created: {self.bot_task}")
+            logger.info("Bot task running")
+            logger.info("Bot task created and running")
         except Exception as e:
             logger.error(f"Error in bot thread: {e}")   
             self.is_running = False
         finally:
-            loop.close()
+            # loop.close()
             self.is_running = False
             logger.info("Bot thread stopped")
     
