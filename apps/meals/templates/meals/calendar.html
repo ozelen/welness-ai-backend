@@ -45,6 +45,20 @@
                     <p class="text-sm text-gray-600">
                         Week {{ current_week_param|slice:"5:" }} of {{ current_week_param|slice:":4" }}
                     </p>
+                    
+                    <!-- View Toggle -->
+                    <div class="flex items-center justify-center mt-3">
+                        <div class="flex items-center space-x-1 bg-gray-100 rounded-lg p-1">
+                            <button onclick="switchToWeekView()" 
+                                    class="px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 {% if not view_type or view_type == 'week' %}bg-white text-gray-900 shadow-sm{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+                                Week
+                            </button>
+                            <button onclick="switchToDayView()" 
+                                    class="px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 {% if view_type == 'day' %}bg-white text-gray-900 shadow-sm{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+                                Day
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 
                 <a href="?week={{ next_week_param }}" 
@@ -111,13 +125,14 @@
     <div class="bg-white rounded-lg shadow overflow-hidden">
         <!-- Calendar Header -->
         <div class="grid grid-cols-7 bg-gray-50 border-b">
-            <div class="p-4 text-center font-medium text-gray-900">Monday</div>
-            <div class="p-4 text-center font-medium text-gray-900">Tuesday</div>
-            <div class="p-4 text-center font-medium text-gray-900">Wednesday</div>
-            <div class="p-4 text-center font-medium text-gray-900">Thursday</div>
-            <div class="p-4 text-center font-medium text-gray-900">Friday</div>
-            <div class="p-4 text-center font-medium text-gray-900">Saturday</div>
-            <div class="p-4 text-center font-medium text-gray-900">Sunday</div>
+            {% for day in week_days %}
+            <div class="p-4 text-center">
+                <a href="?date={{ day|date:'Y-m-d' }}&view=day" 
+                   class="font-medium {% if day == current_date %}text-blue-600 bg-blue-50 px-2 py-1 rounded{% else %}text-gray-900 hover:text-blue-600{% endif %} transition-colors duration-200 cursor-pointer">
+                    {{ day|date:"l" }}
+                </a>
+            </div>
+            {% endfor %}
         </div>
 
         <!-- Calendar Days -->
@@ -857,6 +872,19 @@ document.getElementById('logMealForm').addEventListener('submit', function(e) {
         alert('Error logging meal');
     });
 });
+
+// View Toggle Functions
+function switchToWeekView() {
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.delete('view');
+    window.location.href = currentUrl.toString();
+}
+
+function switchToDayView() {
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.set('view', 'day');
+    window.location.href = currentUrl.toString();
+}
 
 // Edit and Delete Meal Record Functions
 function openEditMealRecordModal(recordId) {

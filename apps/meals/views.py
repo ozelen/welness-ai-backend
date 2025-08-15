@@ -1455,6 +1455,9 @@ def calendar_view(request):
     # Get current date for determining which days are editable
     current_date = timezone.now().date()
     
+    # Get view type from request
+    view_type = request.GET.get('view', 'week')
+    
     context = {
         'week_days': week_days,
         'meals_by_day': meals_by_day,
@@ -1470,6 +1473,85 @@ def calendar_view(request):
         'week_start': week_start,
         'week_end': week_end,
         'current_date': current_date,
+        'view_type': view_type,
     }
     
-    return render(request, 'meals/calendar.html', context)
+    # Render appropriate template based on view type
+    if view_type == 'day':
+        # For day view, we need to get a specific date
+        selected_date_str = request.GET.get('date')
+        if selected_date_str:
+            try:
+                selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                selected_date = current_date
+        else:
+            selected_date = current_date
+        
+        # Get data for the specific day
+        day_data = meals_by_day.get(selected_date, {
+            'scheduled': [],
+            'completed': [],
+            'planned_calories': 0,
+            'planned_proteins': 0,
+            'planned_carbs': 0,
+            'planned_fats': 0,
+            'taken_calories': 0,
+            'taken_proteins': 0,
+            'taken_carbs': 0,
+            'taken_fats': 0,
+        })
+        
+        # Get unplanned meals for this day
+        unplanned_meals = [record for record in meal_records if record.timestamp.date() == selected_date and not record.meal]
+        
+        # Get completed meal IDs for this specific day
+        completed_meals_for_day = completed_meal_ids_by_day.get(selected_date, set())
+        
+        # Calculate day totals
+        day_totals = {
+            'taken_calories': day_data['taken_calories'],
+            'taken_proteins': day_data['taken_proteins'],
+            'taken_carbs': day_data['taken_carbs'],
+            'taken_fats': day_data['taken_fats'],
+        }
+        
+        # Get daily targets from active diet
+        daily_targets = None
+        day_percentages = None
+        if active_diet:
+            daily_targets = {
+                'calories': active_diet.day_calories_kcal,
+                'proteins': active_diet.day_proteins_g,
+                'carbs': active_diet.day_carbohydrates_g,
+                'fats': active_diet.day_fats_g,
+            }
+            
+            # Calculate percentages
+            day_percentages = {
+                'calories': (day_totals['taken_calories'] / daily_targets['calories'] * 100) if daily_targets['calories'] > 0 else 0,
+                'proteins': (day_totals['taken_proteins'] / daily_targets['proteins'] * 100) if daily_targets['proteins'] > 0 else 0,
+                'carbs': (day_totals['taken_carbs'] / daily_targets['carbs'] * 100) if daily_targets['carbs'] > 0 else 0,
+                'fats': (day_totals['taken_fats'] / daily_targets['fats'] * 100) if daily_targets['fats'] > 0 else 0,
+            }
+        
+        # Calculate navigation dates
+        prev_day = selected_date - timedelta(days=1)
+        next_day = selected_date + timedelta(days=1)
+        
+        # Add day-specific context
+        context.update({
+            'selected_date': selected_date,
+            'day_data': day_data,
+            'unplanned_meals': unplanned_meals,
+            'completed_meals_for_day': completed_meals_for_day,
+            'day_totals': day_totals,
+            'daily_targets': daily_targets,
+            'day_percentages': day_percentages,
+            'prev_day': prev_day,
+            'next_day': next_day,
+        })
+        
+        return render(request, 'meals/calendar_day.html', context)
+    else:
+        return render(request, 'meals/calendar.html', context)

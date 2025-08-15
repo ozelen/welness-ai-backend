@@ -1,0 +1,291 @@
+// Meal Completion Functions
+function toggleMealCompletion(mealId, date) {
+    const button = document.querySelector(`[data-meal-id="${mealId}"][data-date="${date}"] .meal-completion-btn`);
+    const isCompleted = button.querySelector('.material-icons').textContent === 'check_circle';
+    
+    const url = isCompleted ? 
+        `/meals/meals/${mealId}/unmark-completed/?date=${date}` : 
+        `/meals/meals/${mealId}/mark-completed/?date=${date}`;
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update the button icon
+            const icon = button.querySelector('.material-icons');
+            if (isCompleted) {
+                icon.textContent = 'radio_button_unchecked';
+                button.classList.remove('bg-green-200', 'hover:bg-green-300');
+                button.classList.add('hover:bg-gray-100');
+            } else {
+                icon.textContent = 'check_circle';
+                button.classList.add('bg-green-200', 'hover:bg-green-300');
+                button.classList.remove('hover:bg-gray-100');
+            }
+            
+            // Update the meal card styling
+            const mealCard = button.closest('.meal-card');
+            if (isCompleted) {
+                mealCard.classList.remove('bg-green-50', 'border-green-200');
+                mealCard.classList.add('bg-blue-50', 'border-blue-200');
+            } else {
+                mealCard.classList.remove('bg-blue-50', 'border-blue-200');
+                mealCard.classList.add('bg-green-50', 'border-green-200');
+            }
+            
+            // Reload the page to update nutrition totals
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
+        } else {
+            alert(isCompleted ? 'Error unmarking meal as completed' : 'Error marking meal as completed');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert(isCompleted ? 'Error unmarking meal as completed' : 'Error marking meal as completed');
+    });
+}
+
+// Feedback Modal Functions
+function openFeedbackModal(mealId, date, recordId = null) {
+    document.getElementById('feedbackMealId').value = mealId || '';
+    document.getElementById('feedbackDate').value = date;
+    document.getElementById('feedbackRecordId').value = recordId || '';
+    
+    // Clear previous values
+    document.getElementById('feedbackText').value = '';
+    document.getElementById('feedbackPhoto').value = '';
+    
+    document.getElementById('feedbackModal').classList.remove('hidden');
+}
+
+function closeFeedbackModal() {
+    document.getElementById('feedbackModal').classList.add('hidden');
+}
+
+// Log Meal Modal Functions
+function openLogMealModal(date) {
+    document.getElementById('log_date').value = date;
+    
+    // Pre-fill current time if it's today
+    const today = new Date().toISOString().split('T')[0];
+    if (date === today) {
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        document.getElementById('log_time').value = `${hours}:${minutes}`;
+    }
+    
+    document.getElementById('logMealModal').classList.remove('hidden');
+}
+
+function closeLogMealModal() {
+    document.getElementById('logMealModal').classList.add('hidden');
+}
+
+// Schedule Meal Modal Functions
+function openScheduleMealModal(date) {
+    document.getElementById('scheduleMealModal').classList.remove('hidden');
+}
+
+function closeScheduleMealModal() {
+    document.getElementById('scheduleMealModal').classList.add('hidden');
+}
+
+// View Toggle Functions
+function switchToWeekView() {
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.delete('view');
+    window.location.href = currentUrl.toString();
+}
+
+function switchToDayView() {
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.set('view', 'day');
+    window.location.href = currentUrl.toString();
+}
+
+// Edit and Delete Meal Record Functions
+function openEditMealRecordModal(recordId) {
+    // For now, just reload the page - we can implement edit modal later
+    // This would open a modal similar to log meal but pre-filled with record data
+    alert('Edit functionality coming soon!');
+}
+
+function deleteMealRecord(recordId) {
+    if (confirm('Are you sure you want to delete this meal record?')) {
+        fetch(`/meals/meals/record/${recordId}/delete/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Remove the meal card from the DOM
+                const mealCard = document.querySelector(`[data-record-id="${recordId}"]`);
+                if (mealCard) {
+                    mealCard.remove();
+                }
+                // Reload the page to update nutrition totals
+                setTimeout(() => {
+                    window.location.reload();
+                }, 500);
+            } else {
+                alert('Error deleting meal record');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error deleting meal record');
+        });
+    }
+}
+
+// Utility Functions
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Form Submissions
+document.addEventListener('DOMContentLoaded', function() {
+    // Feedback Form
+    const feedbackForm = document.getElementById('feedbackForm');
+    if (feedbackForm) {
+        feedbackForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('meal_id', document.getElementById('feedbackMealId').value);
+            formData.append('date', document.getElementById('feedbackDate').value);
+            formData.append('feedback', document.getElementById('feedbackText').value);
+            
+            const photoFile = document.getElementById('feedbackPhoto').files[0];
+            if (photoFile) {
+                formData.append('photo', photoFile);
+            }
+            
+            const recordId = document.getElementById('feedbackRecordId').value;
+            if (recordId) {
+                formData.append('record_id', recordId);
+            }
+            
+            fetch('/meals/meals/feedback/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: formData,
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeFeedbackModal();
+                    window.location.reload();
+                } else {
+                    alert('Error saving feedback');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error saving feedback');
+            });
+        });
+    }
+    
+    // Log Meal Form
+    const logMealForm = document.getElementById('logMealForm');
+    if (logMealForm) {
+        logMealForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('name', document.getElementById('log_name').value);
+            formData.append('date', document.getElementById('log_date').value);
+            formData.append('time', document.getElementById('log_time').value);
+            formData.append('quantity_grams', document.getElementById('log_quantity_grams').value);
+            formData.append('calories', document.getElementById('log_calories').value);
+            formData.append('proteins', document.getElementById('log_proteins').value);
+            formData.append('carbs', document.getElementById('log_carbs').value);
+            formData.append('fats', document.getElementById('log_fats').value);
+            
+            fetch('/meals/meals/log-meal/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: formData,
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeLogMealModal();
+                    window.location.reload();
+                } else {
+                    alert('Error logging meal');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error logging meal');
+            });
+        });
+    }
+    
+    // Schedule Meal Form
+    const scheduleMealForm = document.getElementById('scheduleMealForm');
+    if (scheduleMealForm) {
+        scheduleMealForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('name', document.getElementById('schedule_meal_name').value);
+            formData.append('meal_type', document.getElementById('schedule_meal_type').value);
+            formData.append('start_time', document.getElementById('schedule_start_time').value);
+            formData.append('recurrence_type', document.getElementById('schedule_recurrence_type').value);
+            formData.append('end_date', document.getElementById('schedule_end_date').value);
+            formData.append('description', document.getElementById('schedule_description').value);
+            
+            fetch('/meals/meals/create-and-schedule/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: formData,
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeScheduleMealModal();
+                    window.location.reload();
+                } else {
+                    alert('Error creating meal');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error creating meal');
+            });
+        });
+    }
+});

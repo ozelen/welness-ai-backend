@@ -1,0 +1,185 @@
+<!-- Feedback Modal -->
+<div id="feedbackModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Add Feedback</h3>
+            <form id="feedbackForm">
+                <input type="hidden" id="feedbackMealId" name="meal_id">
+                <input type="hidden" id="feedbackDate" name="date">
+                <input type="hidden" id="feedbackRecordId" name="record_id">
+                
+                <div class="mb-4">
+                    <label for="feedbackText" class="block text-sm font-medium text-gray-700 mb-2">Feedback</label>
+                    <textarea id="feedbackText" name="feedback" rows="4" 
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="How was this meal? Any notes..."></textarea>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="feedbackPhoto" class="block text-sm font-medium text-gray-700 mb-2">Photo (optional)</label>
+                    <input type="file" id="feedbackPhoto" name="photo" accept="image/*"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeFeedbackModal()" 
+                            class="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors duration-200">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200">
+                        Save Feedback
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Log Meal Modal -->
+<div id="logMealModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Log Meal</h3>
+            <form id="logMealForm">
+                <div class="mb-4">
+                    <label for="log_name" class="block text-sm font-medium text-gray-700 mb-2">Meal Name</label>
+                    <input type="text" id="log_name" name="name" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="e.g., Pizza, Salad, etc.">
+                </div>
+                
+                <div class="mb-4">
+                    <label for="log_date" class="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                    <input type="date" id="log_date" name="date" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div class="mb-4">
+                    <label for="log_time" class="block text-sm font-medium text-gray-700 mb-2">Time</label>
+                    <input type="time" id="log_time" name="time" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div class="mb-4">
+                    <label for="log_quantity_grams" class="block text-sm font-medium text-gray-700 mb-2">Quantity (grams, optional)</label>
+                    <input type="number" id="log_quantity_grams" name="quantity_grams" step="0.1"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="e.g., 250">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="log_calories" class="block text-sm font-medium text-gray-700 mb-2">Calories</label>
+                        <input type="number" id="log_calories" name="calories" step="0.1"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               placeholder="e.g., 500">
+                    </div>
+                    <div>
+                        <label for="log_proteins" class="block text-sm font-medium text-gray-700 mb-2">Protein (g)</label>
+                        <input type="number" id="log_proteins" name="proteins" step="0.1"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               placeholder="e.g., 25">
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="log_carbs" class="block text-sm font-medium text-gray-700 mb-2">Carbs (g)</label>
+                        <input type="number" id="log_carbs" name="carbs" step="0.1"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               placeholder="e.g., 60">
+                    </div>
+                    <div>
+                        <label for="log_fats" class="block text-sm font-medium text-gray-700 mb-2">Fat (g)</label>
+                        <input type="number" id="log_fats" name="fats" step="0.1"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               placeholder="e.g., 20">
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeLogMealModal()" 
+                            class="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors duration-200">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                            class="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors duration-200">
+                        Log Meal
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Schedule Meal Modal -->
+<div id="scheduleMealModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Add Meal to Diet</h3>
+            <form id="scheduleMealForm">
+                <div class="mb-4">
+                    <label for="schedule_meal_name" class="block text-sm font-medium text-gray-700 mb-2">Meal Name</label>
+                    <input type="text" id="schedule_meal_name" name="name" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="e.g., Breakfast, Lunch, etc.">
+                </div>
+                
+                <div class="mb-4">
+                    <label for="schedule_meal_type" class="block text-sm font-medium text-gray-700 mb-2">Meal Type</label>
+                    <select id="schedule_meal_type" name="meal_type" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Select meal type</option>
+                        <option value="breakfast">Breakfast</option>
+                        <option value="lunch">Lunch</option>
+                        <option value="dinner">Dinner</option>
+                        <option value="snack">Snack</option>
+                    </select>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="schedule_start_time" class="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
+                    <input type="time" id="schedule_start_time" name="start_time" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div class="mb-4">
+                    <label for="schedule_recurrence_type" class="block text-sm font-medium text-gray-700 mb-2">Recurrence</label>
+                    <select id="schedule_recurrence_type" name="recurrence_type" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="none">None (one-time)</option>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="weekday">Weekdays</option>
+                        <option value="weekend">Weekends</option>
+                    </select>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="schedule_end_date" class="block text-sm font-medium text-gray-700 mb-2">End Date (optional)</label>
+                    <input type="date" id="schedule_end_date" name="end_date"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div class="mb-4">
+                    <label for="schedule_description" class="block text-sm font-medium text-gray-700 mb-2">Description (optional)</label>
+                    <textarea id="schedule_description" name="description" rows="3"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Any additional notes..."></textarea>
+                </div>
+                
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeScheduleMealModal()" 
+                            class="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors duration-200">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200">
+                        Add to Diet
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
