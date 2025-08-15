@@ -929,6 +929,189 @@ def unschedule_meal(request, meal_id):
 
 @api_view(['POST'])
 @permission_classes([permissions.IsAuthenticated])
+def log_meal(request):
+    """Log a meal record (no diet/meal creation)"""
+    try:
+        meal_name = request.data.get('name')
+        date_str = request.data.get('date')
+        time_str = request.data.get('time')
+        
+        if not meal_name or not date_str or not time_str:
+            return Response(
+                {'error': 'Meal name, date, and time are required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Parse date and time
+        start_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        start_time = datetime.strptime(time_str, '%H:%M').time()
+        timestamp = datetime.combine(start_date, start_time)
+        
+        # Get nutritional values
+        calories = request.data.get('calories')
+        proteins = request.data.get('proteins')
+        carbs = request.data.get('carbs')
+        fats = request.data.get('fats')
+        quantity_grams = request.data.get('quantity_grams')
+        
+        # Create meal record (no linked meal)
+        meal_record = MealRecord.objects.create(
+            meal=None,  # No linked meal
+            meal_name=meal_name,
+            timestamp=timestamp,
+            user=request.user,
+            calories=float(calories) if calories else None,
+            proteins=float(proteins) if proteins else None,
+            carbs=float(carbs) if carbs else None,
+            fats=float(fats) if fats else None,
+            quantity_grams=float(quantity_grams) if quantity_grams else None,
+        )
+        
+        return Response({
+            'success': True,
+            'id': meal_record.id,
+            'name': meal_record.meal_name,
+            'message': 'Meal logged successfully'
+        })
+        
+    except Exception as e:
+        return Response(
+            {'error': str(e)}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+@api_view(['DELETE'])
+@permission_classes([permissions.IsAuthenticated])
+def delete_meal_record(request, record_id):
+    """Delete a meal record"""
+    try:
+        meal_record = MealRecord.objects.get(id=record_id, user=request.user)
+        meal_record.delete()
+        
+        return Response({
+            'success': True,
+            'message': 'Meal record deleted successfully'
+        })
+        
+    except MealRecord.DoesNotExist:
+        return Response(
+            {'error': 'Meal record not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': str(e)}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def create_and_schedule_meal(request):
+    """Create a new meal or meal record from the calendar"""
+    try:
+        meal_name = request.data.get('name', 'New Meal')
+        start_date_str = request.data.get('start_date')
+        start_time_str = request.data.get('start_time')
+        
+        if not start_date_str or not start_time_str:
+            return Response(
+                {'error': 'Date and time are required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Parse date and time
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        start_time = datetime.strptime(start_time_str, '%H:%M').time()
+        timestamp = datetime.combine(start_date, start_time)
+        
+        # Check if nutritional information is provided
+        calories = request.data.get('calories')
+        proteins = request.data.get('proteins')
+        carbs = request.data.get('carbs')
+        fats = request.data.get('fats')
+        quantity_grams = request.data.get('quantity_grams')
+        
+        has_nutritional_info = any([calories, proteins, carbs, fats, quantity_grams])
+        
+        if has_nutritional_info:
+            # Create an unplanned meal record
+            meal_record = MealRecord.objects.create(
+                meal=None,  # No linked meal
+                meal_name=meal_name,
+                timestamp=timestamp,
+                user=request.user,
+                calories=float(calories) if calories else None,
+                proteins=float(proteins) if proteins else None,
+                carbs=float(carbs) if carbs else None,
+                fats=float(fats) if fats else None,
+                quantity_grams=float(quantity_grams) if quantity_grams else None,
+            )
+            
+            return Response({
+                'success': True,
+                'id': meal_record.id,
+                'name': meal_record.meal_name,
+                'type': 'unplanned',
+                'message': 'Unplanned meal recorded successfully'
+            })
+        else:
+            # Create a planned meal (requires active diet)
+            active_diet = Diet.objects.filter(user=request.user, is_active=True).first()
+            if not active_diet:
+                return Response(
+                    {'error': 'No active diet found. Please create or activate a diet first, or provide nutritional information for an unplanned meal.'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Create a new meal
+            meal = Meal.objects.create(
+                name=meal_name,
+                description=request.data.get('description', 'Meal created from calendar'),
+                diet=active_diet,
+                is_scheduled=True,
+                start_date=start_date,
+                start_time=start_time,
+                duration_minutes=int(request.data.get('duration_minutes', 30)),
+                recurrence_type=request.data.get('recurrence_type', 'none'),
+                meal_type=request.data.get('meal_type', 'regular')
+            )
+            
+            # Handle end_date field
+            end_date_str = request.data.get('end_date')
+            if end_date_str:
+                meal.end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            
+            # Handle recurrence_until field
+            recurrence_until_str = request.data.get('recurrence_until')
+            if recurrence_until_str:
+                meal.recurrence_until = datetime.strptime(recurrence_until_str, '%Y-%m-%d').date()
+            
+            meal.save()
+            
+            # Sync to Google Calendar
+            from .services import sync_meal_to_calendar
+            calendar_event_id = sync_meal_to_calendar(meal)
+            
+            return Response({
+                'success': True,
+                'id': meal.id,
+                'name': meal.name,
+                'type': 'planned',
+                'calendar_event_id': calendar_event_id,
+                'message': 'Meal created and scheduled successfully'
+            })
+        
+    except Exception as e:
+        return Response(
+            {'error': str(e)}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
 def mark_meal_completed(request, meal_id):
     """Mark a meal as completed by creating a MealRecord"""
     try:
@@ -1180,7 +1363,7 @@ def calendar_view(request):
     for day in week_days:
         meals_by_day[day]['scheduled'].sort(key=lambda meal: meal.start_time or time(23, 59))  # Meals without time go to end
     
-    # Get meal records for the week (completed meals)
+    # Get meal records for the week (completed meals and unplanned meals)
     meal_records = MealRecord.objects.filter(
         user=user,
         timestamp__date__gte=week_start,
@@ -1209,16 +1392,24 @@ def calendar_view(request):
     for record in meal_records:
         day = record.timestamp.date()
         if day in meals_by_day:
-            completed_meal_ids_by_day[day].add(record.meal.id)
-            
-            # Calculate nutrition for completed meal
-            meal = record.meal
-            for meal_ingredient in meal.mealingredient_set.all():
-                ratio = meal_ingredient.quantity / 100
-                meals_by_day[day]['taken_calories'] += meal_ingredient.ingredient.calories * ratio
-                meals_by_day[day]['taken_proteins'] += meal_ingredient.ingredient.proteins * ratio
-                meals_by_day[day]['taken_carbs'] += meal_ingredient.ingredient.carbs * ratio
-                meals_by_day[day]['taken_fats'] += meal_ingredient.ingredient.fats * ratio
+            if record.meal:
+                # Planned meal record
+                completed_meal_ids_by_day[day].add(record.meal.id)
+                
+                # Calculate nutrition for completed meal
+                meal = record.meal
+                for meal_ingredient in meal.mealingredient_set.all():
+                    ratio = meal_ingredient.quantity / 100
+                    meals_by_day[day]['taken_calories'] += meal_ingredient.ingredient.calories * ratio
+                    meals_by_day[day]['taken_proteins'] += meal_ingredient.ingredient.proteins * ratio
+                    meals_by_day[day]['taken_carbs'] += meal_ingredient.ingredient.carbs * ratio
+                    meals_by_day[day]['taken_fats'] += meal_ingredient.ingredient.fats * ratio
+            else:
+                # Unplanned meal record - use direct nutritional values
+                meals_by_day[day]['taken_calories'] += record.calories or 0
+                meals_by_day[day]['taken_proteins'] += record.proteins or 0
+                meals_by_day[day]['taken_carbs'] += record.carbs or 0
+                meals_by_day[day]['taken_fats'] += record.fats or 0
     
     # Calculate week totals
     week_totals = {
@@ -1244,10 +1435,10 @@ def calendar_view(request):
         
         # Calculate percentages
         week_percentages = {
-            'calories': (week_totals['calories'] / weekly_targets['calories'] * 100) if weekly_targets['calories'] > 0 else 0,
-            'proteins': (week_totals['proteins'] / weekly_targets['proteins'] * 100) if weekly_targets['proteins'] > 0 else 0,
-            'carbs': (week_totals['carbs'] / weekly_targets['carbs'] * 100) if weekly_targets['carbs'] > 0 else 0,
-            'fats': (week_totals['fats'] / weekly_targets['fats'] * 100) if weekly_targets['fats'] > 0 else 0,
+            'calories': (week_totals['taken_calories'] / weekly_targets['calories'] * 100) if weekly_targets['calories'] > 0 else 0,
+            'proteins': (week_totals['taken_proteins'] / weekly_targets['proteins'] * 100) if weekly_targets['proteins'] > 0 else 0,
+            'carbs': (week_totals['taken_carbs'] / weekly_targets['carbs'] * 100) if weekly_targets['carbs'] > 0 else 0,
+            'fats': (week_totals['taken_fats'] / weekly_targets['fats'] * 100) if weekly_targets['fats'] > 0 else 0,
         }
     else:
         weekly_targets = None
@@ -1268,6 +1459,7 @@ def calendar_view(request):
         'week_days': week_days,
         'meals_by_day': meals_by_day,
         'completed_meal_ids_by_day': completed_meal_ids_by_day,
+        'meal_records': meal_records,  # Add meal records for unplanned meals
         'week_totals': week_totals,
         'weekly_targets': weekly_targets,
         'week_percentages': week_percentages,

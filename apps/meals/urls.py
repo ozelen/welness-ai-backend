@@ -77,4 +77,13 @@ urlpatterns = [
     
     # Meal feedback endpoints
     path('meals/<int:meal_id>/feedback/', views.MealFeedbackView.as_view(), name='meal-feedback'),
+    
+    # Create and schedule meal from calendar
+    path('meals/create-and-schedule/', views.create_and_schedule_meal, name='create-and-schedule-meal'),
+    
+    # Log meal record (no diet/meal creation)
+    path('meals/log-meal/', views.log_meal, name='log-meal'),
+    
+    # Delete meal record
+    path('meals/record/<int:record_id>/delete/', views.delete_meal_record, name='delete-meal-record'),
 ]

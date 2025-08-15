@@ -144,7 +144,18 @@ class MealIngredient(models.Model):
         return f"{self.meal.name} - {self.ingredient.name}"
     
 class MealRecord(models.Model):
-    meal = models.ForeignKey(Meal, on_delete=models.CASCADE)
+    # For planned meals (linked to existing meal)
+    meal = models.ForeignKey(Meal, on_delete=models.CASCADE, null=True, blank=True)
+    
+    # For unplanned meals (direct nutritional info)
+    meal_name = models.CharField(max_length=255, null=True, blank=True)
+    quantity_grams = models.FloatField(null=True, blank=True)
+    calories = models.FloatField(null=True, blank=True)
+    proteins = models.FloatField(null=True, blank=True)
+    carbs = models.FloatField(null=True, blank=True)
+    fats = models.FloatField(null=True, blank=True)
+    
+    # Common fields
     timestamp = models.DateTimeField()
     photo = models.ImageField(upload_to='meal_photos/', null=True, blank=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -153,7 +164,56 @@ class MealRecord(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.meal.name} - {self.timestamp}"
+        if self.meal:
+            return f"{self.meal.name} - {self.timestamp}"
+        else:
+            return f"{self.meal_name} - {self.timestamp}"
+    
+    def get_total_calories(self):
+        """Get total calories for this meal record"""
+        if self.meal:
+            # Calculate from meal ingredients
+            total = 0
+            for meal_ingredient in self.meal.mealingredient_set.all():
+                ratio = meal_ingredient.quantity / 100
+                total += meal_ingredient.ingredient.calories * ratio
+            return total
+        else:
+            # Return direct calories
+            return self.calories or 0
+    
+    def get_total_proteins(self):
+        """Get total proteins for this meal record"""
+        if self.meal:
+            total = 0
+            for meal_ingredient in self.meal.mealingredient_set.all():
+                ratio = meal_ingredient.quantity / 100
+                total += meal_ingredient.ingredient.proteins * ratio
+            return total
+        else:
+            return self.proteins or 0
+    
+    def get_total_carbs(self):
+        """Get total carbs for this meal record"""
+        if self.meal:
+            total = 0
+            for meal_ingredient in self.meal.mealingredient_set.all():
+                ratio = meal_ingredient.quantity / 100
+                total += meal_ingredient.ingredient.carbs * ratio
+            return total
+        else:
+            return self.carbs or 0
+    
+    def get_total_fats(self):
+        """Get total fats for this meal record"""
+        if self.meal:
+            total = 0
+            for meal_ingredient in self.meal.mealingredient_set.all():
+                ratio = meal_ingredient.quantity / 100
+                total += meal_ingredient.ingredient.fats * ratio
+            return total
+        else:
+            return self.fats or 0
 
 class MealPreference(models.Model):
     PREFERENCE_TYPES = [
