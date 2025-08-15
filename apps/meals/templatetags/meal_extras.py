@@ -78,4 +78,67 @@ def format_recurrence(recurrence_type):
 @register.filter
 def in_set(value, set_obj):
     """Check if value is in set"""
-    return value in set_obj 
+    return value in set_obj
+
+
+@register.filter
+def get_battery_icon(taken, planned):
+    """Get battery icon based on taken vs planned percentage"""
+    if planned <= 0:
+        return 'empty'
+    
+    percentage = (taken / planned) * 100
+    
+    if percentage >= 90:
+        return 'full'  # Green full battery
+    elif percentage >= 50:
+        return 'half'  # Yellow half battery
+    else:
+        return 'low'   # Red low battery
+
+
+@register.filter
+def get_battery_color(taken, planned):
+    """Get battery color based on taken vs planned percentage"""
+    if planned <= 0:
+        return 'text-gray-400'
+    
+    percentage = (taken / planned) * 100
+    
+    if percentage >= 90:
+        return 'text-green-600'  # Green for good adherence
+    elif percentage >= 50:
+        return 'text-yellow-600'  # Yellow for moderate adherence
+    else:
+        return 'text-red-600'     # Red for low adherence
+
+
+@register.filter
+def get_overtaken_icon(taken, planned):
+    """Get attention icon if taken is more than 10% over planned"""
+    if planned <= 0:
+        return None
+    
+    percentage = (taken / planned) * 100
+    
+    if percentage > 110:  # More than 10% over
+        return 'attention'
+    return None
+
+
+@register.filter
+def div(value, arg):
+    """Divide value by arg"""
+    try:
+        return float(value) / float(arg)
+    except (ValueError, ZeroDivisionError):
+        return 0
+
+
+@register.filter
+def mul(value, arg):
+    """Multiply value by arg"""
+    try:
+        return float(value) * float(arg)
+    except (ValueError, TypeError):
+        return 0 

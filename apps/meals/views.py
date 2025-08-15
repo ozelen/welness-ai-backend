@@ -1053,10 +1053,14 @@ def calendar_view(request):
         meals_by_day[day] = {
             'scheduled': [],
             'completed': [],
-            'total_calories': 0,
-            'total_proteins': 0,
-            'total_carbs': 0,
-            'total_fats': 0,
+            'planned_calories': 0,
+            'planned_proteins': 0,
+            'planned_carbs': 0,
+            'planned_fats': 0,
+            'taken_calories': 0,
+            'taken_proteins': 0,
+            'taken_carbs': 0,
+            'taken_fats': 0,
         }
     
     # Process each scheduled meal and add it to the appropriate days
@@ -1119,7 +1123,18 @@ def calendar_view(request):
     for day in week_days:
         completed_meal_ids_by_day[day] = set()
     
-    # Populate completed meals and calculate nutrition
+    # Calculate planned nutrition for all scheduled meals
+    for day in week_days:
+        day_data = meals_by_day[day]
+        for meal in day_data['scheduled']:
+            for meal_ingredient in meal.mealingredient_set.all():
+                ratio = meal_ingredient.quantity / 100
+                day_data['planned_calories'] += meal_ingredient.ingredient.calories * ratio
+                day_data['planned_proteins'] += meal_ingredient.ingredient.proteins * ratio
+                day_data['planned_carbs'] += meal_ingredient.ingredient.carbs * ratio
+                day_data['planned_fats'] += meal_ingredient.ingredient.fats * ratio
+    
+    # Populate completed meals and calculate taken nutrition
     for record in meal_records:
         day = record.timestamp.date()
         if day in meals_by_day:
@@ -1129,17 +1144,21 @@ def calendar_view(request):
             meal = record.meal
             for meal_ingredient in meal.mealingredient_set.all():
                 ratio = meal_ingredient.quantity / 100
-                meals_by_day[day]['total_calories'] += meal_ingredient.ingredient.calories * ratio
-                meals_by_day[day]['total_proteins'] += meal_ingredient.ingredient.proteins * ratio
-                meals_by_day[day]['total_carbs'] += meal_ingredient.ingredient.carbs * ratio
-                meals_by_day[day]['total_fats'] += meal_ingredient.ingredient.fats * ratio
+                meals_by_day[day]['taken_calories'] += meal_ingredient.ingredient.calories * ratio
+                meals_by_day[day]['taken_proteins'] += meal_ingredient.ingredient.proteins * ratio
+                meals_by_day[day]['taken_carbs'] += meal_ingredient.ingredient.carbs * ratio
+                meals_by_day[day]['taken_fats'] += meal_ingredient.ingredient.fats * ratio
     
     # Calculate week totals
     week_totals = {
-        'calories': sum(day['total_calories'] for day in meals_by_day.values()),
-        'proteins': sum(day['total_proteins'] for day in meals_by_day.values()),
-        'carbs': sum(day['total_carbs'] for day in meals_by_day.values()),
-        'fats': sum(day['total_fats'] for day in meals_by_day.values()),
+        'planned_calories': sum(day['planned_calories'] for day in meals_by_day.values()),
+        'planned_proteins': sum(day['planned_proteins'] for day in meals_by_day.values()),
+        'planned_carbs': sum(day['planned_carbs'] for day in meals_by_day.values()),
+        'planned_fats': sum(day['planned_fats'] for day in meals_by_day.values()),
+        'taken_calories': sum(day['taken_calories'] for day in meals_by_day.values()),
+        'taken_proteins': sum(day['taken_proteins'] for day in meals_by_day.values()),
+        'taken_carbs': sum(day['taken_carbs'] for day in meals_by_day.values()),
+        'taken_fats': sum(day['taken_fats'] for day in meals_by_day.values()),
     }
     
     # Get active diet for target nutrition

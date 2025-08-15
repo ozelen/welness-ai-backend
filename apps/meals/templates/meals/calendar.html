@@ -162,28 +162,20 @@
                                         data-date="{{ day|date:'Y-m-d' }}"
                                         title="{% if is_completed %}Unmark as completed{% else %}Mark as completed{% endif %}">
                                     {% if is_completed %}
-                                    <svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
+                                    <span class="material-icons text-green-600 text-lg">check_circle</span>
                                     {% else %}
-                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
+                                    <span class="material-icons text-gray-400 text-lg">radio_button_unchecked</span>
                                     {% endif %}
                                 </button>
                                 {% else %}
                                 <!-- Show completion status for non-current days (read-only) -->
                                 {% if is_completed %}
                                 <div class="p-1 rounded-full bg-green-200">
-                                    <svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
+                                    <span class="material-icons text-green-600 text-lg">check_circle</span>
                                 </div>
                                 {% else %}
                                 <div class="p-1 rounded-full bg-gray-100">
-                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
+                                    <span class="material-icons text-gray-400 text-lg">radio_button_unchecked</span>
                                 </div>
                                 {% endif %}
                                 {% endif %}
@@ -204,24 +196,69 @@
             {% for day in week_days %}
             <div class="p-3 border-r border-gray-200 {% if forloop.last %}border-r-0{% endif %}">
                 {% with day_data=meals_by_day|get_item:day %}
-                {% if day_data.total_calories > 0 %}
-                <div class="text-center">
-                    <div class="text-sm font-bold text-gray-900">{{ day_data.total_calories|floatformat:0 }}</div>
-                    <div class="text-xs text-gray-600">calories</div>
-                    <div class="text-xs text-gray-700 mt-1">
-                        {{ day_data.total_proteins|floatformat:1 }}g protein
+                {% if day_data.planned_calories > 0 or day_data.taken_calories > 0 %}
+                <div class="text-left space-y-1">
+                    <!-- Calories -->
+                    <div class="text-sm font-bold text-gray-900 text-center">
+                        {{ day_data.taken_calories|floatformat:0 }} kcal
                     </div>
-                    <div class="text-xs text-gray-700">
-                        {{ day_data.total_carbs|floatformat:1 }}g carbs
+                    
+                    <!-- Protein -->
+                    {% if day_data.planned_proteins > 0 %}
+                    <div class="flex items-center space-x-1">
+                        <span class="material-icons text-sm {{ day_data.taken_proteins|get_battery_color:day_data.planned_proteins }}" style="line-height: 1;">
+                            {% if day_data.taken_proteins|get_battery_icon:day_data.planned_proteins == 'full' %}
+                            check_circle
+                            {% elif day_data.taken_proteins|get_battery_icon:day_data.planned_proteins == 'half' %}
+                            battery_6_bar
+                            {% else %}
+                            battery_0_bar
+                            {% endif %}
+                        </span>
+                        <span class="text-xs text-gray-700">prot: {{ day_data.taken_proteins|div:day_data.planned_proteins|mul:100|floatformat:0 }}%</span>
                     </div>
-                    <div class="text-xs text-gray-700">
-                        {{ day_data.total_fats|floatformat:1 }}g fats
+                    {% endif %}
+                    
+                    <!-- Carbs -->
+                    {% if day_data.planned_carbs > 0 %}
+                    <div class="flex items-center space-x-1">
+                        <span class="material-icons text-sm {{ day_data.taken_carbs|get_battery_color:day_data.planned_carbs }}" style="line-height: 1;">
+                            {% if day_data.taken_carbs|get_battery_icon:day_data.planned_carbs == 'full' %}
+                            check_circle
+                            {% elif day_data.taken_carbs|get_battery_icon:day_data.planned_carbs == 'half' %}
+                            battery_6_bar
+                            {% else %}
+                            battery_0_bar
+                            {% endif %}
+                        </span>
+                        <span class="text-xs text-gray-700">carb: {{ day_data.taken_carbs|div:day_data.planned_carbs|mul:100|floatformat:0 }}%</span>
                     </div>
+                    {% endif %}
+                    
+                    <!-- Fats -->
+                    {% if day_data.planned_fats > 0 %}
+                    <div class="flex items-center space-x-1">
+                        {% if day_data.taken_fats|get_overtaken_icon:day_data.planned_fats %}
+                        <span class="material-icons text-sm text-orange-600" style="line-height: 1;">warning</span>
+                        {% else %}
+                        <span class="material-icons text-sm {{ day_data.taken_fats|get_battery_color:day_data.planned_fats }}" style="line-height: 1;">
+                            {% if day_data.taken_fats|get_battery_icon:day_data.planned_fats == 'full' %}
+                            check_circle
+                            {% elif day_data.taken_fats|get_battery_icon:day_data.planned_fats == 'half' %}
+                            battery_6_bar
+                            {% else %}
+                            battery_0_bar
+                            {% endif %}
+                        </span>
+                        {% endif %}
+                        <span class="text-xs text-gray-700">fat: {{ day_data.taken_fats|div:day_data.planned_fats|mul:100|floatformat:0 }}%</span>
+                    </div>
+                    {% endif %}
                 </div>
                 {% else %}
                 <div class="text-center text-gray-400">
                     <div class="text-sm">No meals</div>
-                    <div class="text-xs">completed</div>
+                    <div class="text-xs">planned</div>
                 </div>
                 {% endif %}
                 {% endwith %}
@@ -258,20 +295,20 @@
         <div class="p-4">
             <div class="grid grid-cols-4 gap-4">
                 <div class="text-center">
-                    <div class="text-2xl font-bold text-blue-600">{{ week_totals.calories|floatformat:0 }}</div>
-                    <div class="text-sm text-gray-600">Total Calories</div>
+                    <div class="text-2xl font-bold text-blue-600">{{ week_totals.taken_calories|floatformat:0 }}/{{ week_totals.planned_calories|floatformat:0 }}</div>
+                    <div class="text-sm text-gray-600">Calories (Taken/Planned)</div>
                 </div>
                 <div class="text-center">
-                    <div class="text-2xl font-bold text-green-600">{{ week_totals.proteins|floatformat:1 }}</div>
-                    <div class="text-sm text-gray-600">Total Protein (g)</div>
+                    <div class="text-2xl font-bold text-green-600">{{ week_totals.taken_proteins|floatformat:1 }}/{{ week_totals.planned_proteins|floatformat:1 }}</div>
+                    <div class="text-sm text-gray-600">Protein (g) (Taken/Planned)</div>
                 </div>
                 <div class="text-center">
-                    <div class="text-2xl font-bold text-yellow-600">{{ week_totals.carbs|floatformat:1 }}</div>
-                    <div class="text-sm text-gray-600">Total Carbs (g)</div>
+                    <div class="text-2xl font-bold text-yellow-600">{{ week_totals.taken_carbs|floatformat:1 }}/{{ week_totals.planned_carbs|floatformat:1 }}</div>
+                    <div class="text-sm text-gray-600">Carbs (g) (Taken/Planned)</div>
                 </div>
                 <div class="text-center">
-                    <div class="text-2xl font-bold text-red-600">{{ week_totals.fats|floatformat:1 }}</div>
-                    <div class="text-sm text-gray-600">Total Fats (g)</div>
+                    <div class="text-2xl font-bold text-red-600">{{ week_totals.taken_fats|floatformat:1 }}/{{ week_totals.planned_fats|floatformat:1 }}</div>
+                    <div class="text-sm text-gray-600">Fats (g) (Taken/Planned)</div>
                 </div>
             </div>
             {% if active_diet %}
@@ -353,9 +390,10 @@ function toggleMealCompletion(mealId, date) {
                 
                 // Update button
                 button.classList.remove('bg-green-200', 'hover:bg-green-300');
-                button.querySelector('svg').classList.remove('text-green-600');
-                button.querySelector('svg').classList.add('text-gray-400');
-                button.querySelector('svg').innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>';
+                const iconSpan = button.querySelector('.material-icons');
+                iconSpan.classList.remove('text-green-600');
+                iconSpan.classList.add('text-gray-400');
+                iconSpan.textContent = 'radio_button_unchecked';
                 button.title = 'Mark as completed';
                 
                 location.reload(); // Reload to update nutrition totals
@@ -406,9 +444,10 @@ function toggleMealCompletion(mealId, date) {
                 
                 // Update button
                 button.classList.add('bg-green-200', 'hover:bg-green-300');
-                button.querySelector('svg').classList.remove('text-gray-400');
-                button.querySelector('svg').classList.add('text-green-600');
-                button.querySelector('svg').innerHTML = '<path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>';
+                const iconSpan = button.querySelector('.material-icons');
+                iconSpan.classList.remove('text-gray-400');
+                iconSpan.classList.add('text-green-600');
+                iconSpan.textContent = 'check_circle';
                 button.title = 'Unmark as completed';
                 
                 location.reload(); // Reload to update nutrition totals
