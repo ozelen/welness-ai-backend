@@ -29,7 +29,7 @@ class Diet(models.Model):
 
 class Meal(models.Model):
     name = models.CharField(max_length=255)
-    description = models.TextField()
+    description = models.TextField(blank=True, null=True)
     diet = models.ForeignKey(Diet, on_delete=models.CASCADE)
     
     # Calendar scheduling
@@ -125,6 +125,8 @@ class Ingredient(models.Model):
     fibers = models.FloatField()
     sugars = models.FloatField()
     description = models.TextField(null=True, blank=True)
+    is_personal = models.BooleanField(default=False, help_text="Personal ingredient created by user")
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

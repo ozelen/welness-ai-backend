@@ -51,6 +51,7 @@ urlpatterns = [
     
     # Ingredient CRUD endpoints
     path('ingredients/create/', views.create_ingredient, name='create-ingredient'),
+    path('ingredients/create-from-form/', views.create_ingredient_from_form, name='create-ingredient-from-form'),
     path('ingredients/<int:ingredient_id>/update/', views.update_ingredient, name='update-ingredient'),
     path('ingredients/<int:ingredient_id>/get/', views.get_ingredient, name='get-ingredient'),
     

@@ -627,10 +627,28 @@ def meals_management_page(request):
     # Get categories for filtering
     categories = Category.objects.all()
     
+    # Convert ingredients to JSON for JavaScript
+    from django.core.serializers.json import DjangoJSONEncoder
+    import json
+    ingredients_json = json.dumps([
+        {
+            'id': ing.id,
+            'name': ing.name,
+            'calories': ing.calories,
+            'proteins': ing.proteins,
+            'carbs': ing.carbs,
+            'fats': ing.fats,
+            'fibers': ing.fibers,
+            'sugars': ing.sugars,
+        }
+        for ing in ingredients
+    ], cls=DjangoJSONEncoder)
+    
     context = {
         'diets': diets,
         'meals': meals,
         'ingredients': ingredients,
+        'ingredients_json': ingredients_json,
         'categories': categories,
         'selected_diet_id': selected_diet_id,
     }
@@ -1555,3 +1573,63 @@ def calendar_view(request):
         return render(request, 'meals/calendar_day.html', context)
     else:
         return render(request, 'meals/calendar.html', context)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def create_ingredient_from_form(request):
+    """Create a new ingredient from the meal form"""
+    try:
+        name = request.data.get('name')
+        calories = request.data.get('calories', 0)
+        proteins = request.data.get('proteins', 0)
+        carbs = request.data.get('carbs', 0)
+        fats = request.data.get('fats', 0)
+        fibers = request.data.get('fibers', 0)
+        sugars = request.data.get('sugars', 0)
+        is_personal = request.data.get('is_personal', True)
+        
+        if not name:
+            return Response(
+                {'error': 'Ingredient name is required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Create the ingredient
+        ingredient = Ingredient.objects.create(
+            name=name,
+            calories=float(calories),
+            proteins=float(proteins),
+            carbs=float(carbs),
+            fats=float(fats),
+            fibers=float(fibers),
+            sugars=float(sugars),
+            is_personal=is_personal,
+            created_by=request.user
+        )
+        
+        # Create a default preference for the user (like)
+        MealPreference.objects.create(
+            user=request.user,
+            ingredient=ingredient,
+            preference_type='like',
+            description=f'Personal ingredient: {name}'
+        )
+        
+        return Response({
+            'id': ingredient.id,
+            'name': ingredient.name,
+            'calories': ingredient.calories,
+            'proteins': ingredient.proteins,
+            'carbs': ingredient.carbs,
+            'fats': ingredient.fats,
+            'fibers': ingredient.fibers,
+            'sugars': ingredient.sugars,
+            'message': 'Ingredient created successfully'
+        }, status=status.HTTP_201_CREATED)
+        
+    except Exception as e:
+        return Response(
+            {'error': str(e)}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
