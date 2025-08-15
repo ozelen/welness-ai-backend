@@ -1,6 +1,7 @@
 from rest_framework import status, generics, permissions, filters
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404, render
 from django.db.models import Q, Sum
 from django.contrib.auth.models import User
@@ -8,7 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.utils import timezone
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, time
 from .models import (
     Diet, Meal, Category, Ingredient, MealIngredient, 
     MealRecord, MealPreference
@@ -241,6 +242,72 @@ class MealRecordDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         return MealRecord.objects.filter(user=self.request.user)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class MealFeedbackView(APIView):
+    """Handle meal feedback (get and update)"""
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request, meal_id):
+        """Get existing feedback for a meal on a specific date"""
+        date_str = request.GET.get('date')
+        if not date_str:
+            return Response({'error': 'Date parameter required'}, status=400)
+        
+        try:
+            date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return Response({'error': 'Invalid date format'}, status=400)
+        
+        # Find the meal record for this meal and date
+        meal_record = MealRecord.objects.filter(
+            meal_id=meal_id,
+            user=request.user,
+            timestamp__date=date
+        ).first()
+        
+        if meal_record:
+            return Response({
+                'feedback': meal_record.feedback,
+                'photo_url': meal_record.photo.url if meal_record.photo else None
+            })
+        else:
+            return Response({'feedback': None, 'photo_url': None})
+    
+    def post(self, request, meal_id):
+        """Update or create feedback for a meal"""
+        date_str = request.data.get('date')
+        feedback = request.data.get('feedback', '')
+        photo = request.FILES.get('photo')
+        
+        if not date_str:
+            return Response({'error': 'Date parameter required'}, status=400)
+        
+        try:
+            date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return Response({'error': 'Invalid date format'}, status=400)
+        
+        # Find or create the meal record
+        meal_record, created = MealRecord.objects.get_or_create(
+            meal_id=meal_id,
+            user=request.user,
+            timestamp__date=date,
+            defaults={
+                'timestamp': datetime.combine(date, time(12, 0)),  # Default to noon
+                'feedback': feedback
+            }
+        )
+        
+        if not created:
+            # Update existing record
+            meal_record.feedback = feedback
+            if photo:
+                meal_record.photo = photo
+            meal_record.save()
+        
+        return Response({'success': True, 'meal_record_id': meal_record.id})
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -1108,6 +1175,10 @@ def calendar_view(request):
                 day_date = week_start + timedelta(days=i)
                 if day_date >= meal_start and (not meal_end or day_date <= meal_end):
                     meals_by_day[day_date]['scheduled'].append(meal)
+    
+    # Sort meals by time within each day
+    for day in week_days:
+        meals_by_day[day]['scheduled'].sort(key=lambda meal: meal.start_time or time(23, 59))  # Meals without time go to end
     
     # Get meal records for the week (completed meals)
     meal_records = MealRecord.objects.filter(

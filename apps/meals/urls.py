@@ -74,4 +74,7 @@ urlpatterns = [
     path('meals/<int:meal_id>/complete/', views.mark_meal_completed, name='mark-meal-completed'),
     path('meals/<int:meal_id>/uncomplete/', views.unmark_meal_completed, name='unmark-meal-completed'),
     path('meals/<int:meal_id>/completion-status/', views.get_meal_completion_status, name='get-meal-completion-status'),
+    
+    # Meal feedback endpoints
+    path('meals/<int:meal_id>/feedback/', views.MealFeedbackView.as_view(), name='meal-feedback'),
 ]
