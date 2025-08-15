@@ -1,0 +1,447 @@
+{% extends "base.html" %}
+{% load meal_extras %}
+
+{% block title %}Meal Calendar{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">Meal Calendar</h1>
+                <p class="text-gray-600">Weekly view of your scheduled and completed meals</p>
+            </div>
+            <div class="flex space-x-3">
+                <a href="{% url 'meals:meals' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                    </svg>
+                    Manage Meals
+                </a>
+                <a href="{% url 'meals:dashboard' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Week Navigation -->
+    <div class="bg-white rounded-lg shadow mb-6">
+        <div class="p-4">
+            <div class="flex items-center justify-between">
+                <a href="?week={{ prev_week_param }}" 
+                   class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    Previous Week
+                </a>
+                
+                <div class="text-center">
+                    <h2 class="text-xl font-semibold text-gray-900">
+                        {{ week_start|date:"M j" }} - {{ week_end|date:"M j, Y" }}
+                    </h2>
+                    <p class="text-sm text-gray-600">
+                        Week {{ current_week_param|slice:"5:" }} of {{ current_week_param|slice:":4" }}
+                    </p>
+                </div>
+                
+                <a href="?week={{ next_week_param }}" 
+                   class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    Next Week
+                    <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Weekly Nutrition Summary -->
+    {% if weekly_targets %}
+    <div class="bg-white rounded-lg shadow mb-6">
+        <div class="p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Weekly Nutrition Summary</h3>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-blue-600">{{ week_totals.calories|floatformat:0 }}</div>
+                    <div class="text-sm text-gray-600">Calories</div>
+                                        <div class="text-xs text-gray-500">
+                        Target: {{ weekly_targets.calories|floatformat:0 }}
+                        {% if week_percentages %}
+                        ({{ week_percentages.calories|floatformat:0 }}%)
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-green-600">{{ week_totals.proteins|floatformat:1 }}g</div>
+                    <div class="text-sm text-gray-600">Protein</div>
+                    <div class="text-xs text-gray-500">
+                        Target: {{ weekly_targets.proteins|floatformat:1 }}g
+                        {% if week_percentages %}
+                        ({{ week_percentages.proteins|floatformat:0 }}%)
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-yellow-600">{{ week_totals.carbs|floatformat:1 }}g</div>
+                    <div class="text-sm text-gray-600">Carbs</div>
+                    <div class="text-xs text-gray-500">
+                        Target: {{ weekly_targets.carbs|floatformat:1 }}g
+                        {% if week_percentages %}
+                        ({{ week_percentages.carbs|floatformat:0 }}%)
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-red-600">{{ week_totals.fats|floatformat:1 }}g</div>
+                    <div class="text-sm text-gray-600">Fat</div>
+                    <div class="text-xs text-gray-500">
+                        Target: {{ weekly_targets.fats|floatformat:1 }}g
+                        {% if week_percentages %}
+                        ({{ week_percentages.fats|floatformat:0 }}%)
+                        {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Calendar Grid -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <!-- Calendar Header -->
+        <div class="grid grid-cols-7 bg-gray-50 border-b">
+            <div class="p-4 text-center font-medium text-gray-900">Monday</div>
+            <div class="p-4 text-center font-medium text-gray-900">Tuesday</div>
+            <div class="p-4 text-center font-medium text-gray-900">Wednesday</div>
+            <div class="p-4 text-center font-medium text-gray-900">Thursday</div>
+            <div class="p-4 text-center font-medium text-gray-900">Friday</div>
+            <div class="p-4 text-center font-medium text-gray-900">Saturday</div>
+            <div class="p-4 text-center font-medium text-gray-900">Sunday</div>
+        </div>
+
+        <!-- Calendar Days -->
+        <div class="grid grid-cols-7">
+            {% for day in week_days %}
+            <div class="min-h-48 border-r border-gray-200 {% if forloop.last %}border-r-0{% endif %}">
+                <!-- Date Header -->
+                <div class="p-3 border-b border-gray-200 {% if day == week_start %}bg-blue-50{% endif %}">
+                    <div class="text-sm font-medium text-gray-900">{{ day|date:"M j" }}</div>
+                    <div class="text-xs text-gray-500">{{ day|date:"D" }}</div>
+                </div>
+
+                <!-- Day Content -->
+                <div class="p-3 space-y-2">
+                    <!-- Meals -->
+                    {% with day_data=meals_by_day|get_item:day %}
+                    {% with completed_meals=completed_meal_ids_by_day|get_item:day %}
+                    {% for meal in day_data.scheduled %}
+                    {% with is_completed=meal.id|in_set:completed_meals %}
+                    <div class="meal-card {% if is_completed %}bg-green-50 border-green-200{% else %}bg-blue-50 border-blue-200{% endif %} border rounded p-2" 
+                         data-meal-id="{{ meal.id }}" 
+                         data-date="{{ day|date:'Y-m-d' }}">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1 min-w-0">
+                                <div class="text-sm font-medium {% if is_completed %}text-green-900{% else %}text-blue-900{% endif %} truncate">{{ meal.name }}</div>
+                                {% if meal.start_time %}
+                                <div class="text-xs {% if is_completed %}text-green-700{% else %}text-blue-700{% endif %}">{{ meal.start_time|time:"g:i A" }}</div>
+                                {% endif %}
+                                <div class="text-xs {% if is_completed %}text-green-600{% else %}text-blue-600{% endif %}">
+                                    {{ meal.meal_type|title }}
+                                    {% if meal.recurrence_type != 'none' %}
+                                    <span class="{% if is_completed %}text-green-500{% else %}text-blue-500{% endif %}">• {{ meal.recurrence_type|format_recurrence }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-1 ml-2">
+                                <!-- Completion Status - Only show for current day -->
+                                {% if day == current_date %}
+                                <button onclick="toggleMealCompletion({{ meal.id }}, '{{ day|date:'Y-m-d' }}')" 
+                                        class="meal-completion-btn p-1 rounded-full transition-colors duration-200 {% if is_completed %}bg-green-200 hover:bg-green-300{% endif %}"
+                                        data-meal-id="{{ meal.id }}"
+                                        data-date="{{ day|date:'Y-m-d' }}"
+                                        title="{% if is_completed %}Unmark as completed{% else %}Mark as completed{% endif %}">
+                                    {% if is_completed %}
+                                    <svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    {% else %}
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    {% endif %}
+                                </button>
+                                {% else %}
+                                <!-- Show completion status for non-current days (read-only) -->
+                                {% if is_completed %}
+                                <div class="p-1 rounded-full bg-green-200">
+                                    <svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </div>
+                                {% else %}
+                                <div class="p-1 rounded-full bg-gray-100">
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </div>
+                                {% endif %}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endwith %}
+                    {% endfor %}
+                    {% endwith %}
+                    {% endwith %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Daily Totals Row -->
+        <div class="grid grid-cols-7 bg-gray-50 border-t border-gray-200">
+            {% for day in week_days %}
+            <div class="p-3 border-r border-gray-200 {% if forloop.last %}border-r-0{% endif %}">
+                {% with day_data=meals_by_day|get_item:day %}
+                {% if day_data.total_calories > 0 %}
+                <div class="text-center">
+                    <div class="text-sm font-bold text-gray-900">{{ day_data.total_calories|floatformat:0 }}</div>
+                    <div class="text-xs text-gray-600">calories</div>
+                    <div class="text-xs text-gray-700 mt-1">
+                        {{ day_data.total_proteins|floatformat:1 }}g protein
+                    </div>
+                    <div class="text-xs text-gray-700">
+                        {{ day_data.total_carbs|floatformat:1 }}g carbs
+                    </div>
+                    <div class="text-xs text-gray-700">
+                        {{ day_data.total_fats|floatformat:1 }}g fats
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center text-gray-400">
+                    <div class="text-sm">No meals</div>
+                    <div class="text-xs">completed</div>
+                </div>
+                {% endif %}
+                {% endwith %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+
+    <!-- Legend -->
+    <div class="mt-6 bg-white rounded-lg shadow p-4">
+        <h3 class="text-sm font-medium text-gray-900 mb-3">Legend</h3>
+        <div class="flex flex-wrap gap-4 text-sm">
+            <div class="flex items-center">
+                <div class="w-4 h-4 bg-blue-50 border border-blue-200 rounded mr-2"></div>
+                <span class="text-gray-700">Scheduled Meal</span>
+            </div>
+            <div class="flex items-center">
+                <div class="w-4 h-4 bg-green-50 border border-green-200 rounded mr-2"></div>
+                <span class="text-gray-700">Completed Meal</span>
+            </div>
+            <div class="flex items-center">
+                <div class="w-4 h-4 bg-blue-50 border border-blue-200 rounded mr-2"></div>
+                <span class="text-gray-700">Today</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Weekly Totals -->
+    <div class="bg-white rounded-lg shadow overflow-hidden mt-4">
+        <div class="p-4 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">Weekly Summary</h3>
+        </div>
+        <div class="p-4">
+            <div class="grid grid-cols-4 gap-4">
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-blue-600">{{ week_totals.calories|floatformat:0 }}</div>
+                    <div class="text-sm text-gray-600">Total Calories</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-green-600">{{ week_totals.proteins|floatformat:1 }}</div>
+                    <div class="text-sm text-gray-600">Total Protein (g)</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-yellow-600">{{ week_totals.carbs|floatformat:1 }}</div>
+                    <div class="text-sm text-gray-600">Total Carbs (g)</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-red-600">{{ week_totals.fats|floatformat:1 }}</div>
+                    <div class="text-sm text-gray-600">Total Fats (g)</div>
+                </div>
+            </div>
+            {% if active_diet %}
+            <div class="mt-4 pt-4 border-t border-gray-200">
+                <div class="grid grid-cols-4 gap-4">
+                    <div class="text-center">
+                        <div class="text-lg font-medium text-gray-900">{{ week_percentages.calories|floatformat:1 }}%</div>
+                        <div class="text-xs text-gray-600">of weekly target</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-lg font-medium text-gray-900">{{ week_percentages.proteins|floatformat:1 }}%</div>
+                        <div class="text-xs text-gray-600">of weekly target</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-lg font-medium text-gray-900">{{ week_percentages.carbs|floatformat:1 }}%</div>
+                        <div class="text-xs text-gray-600">of weekly target</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-lg font-medium text-gray-900">{{ week_percentages.fats|floatformat:1 }}%</div>
+                        <div class="text-xs text-gray-600">of weekly target</div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+// Meal completion functionality
+function toggleMealCompletion(mealId, date) {
+    // Check if this is the current day (only allow editing current day)
+    const today = new Date().toISOString().split('T')[0];
+    if (date !== today) {
+        alert('You can only mark meals as completed for today.');
+        return;
+    }
+    
+    const button = document.querySelector(`[data-meal-id="${mealId}"][data-date="${date}"]`);
+    const mealCard = document.querySelector(`.meal-card[data-meal-id="${mealId}"][data-date="${date}"]`);
+    
+    // Check if meal is currently completed
+    const isCompleted = mealCard.classList.contains('bg-green-50');
+    
+    if (isCompleted) {
+        // Unmark as completed
+        fetch(`/meals/meals/${mealId}/uncomplete/`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({ date: date })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.meal_id) {
+                // Update UI to show as scheduled
+                mealCard.classList.remove('bg-green-50', 'border-green-200');
+                mealCard.classList.add('bg-blue-50', 'border-blue-200');
+                
+                // Update all text colors
+                const mealName = mealCard.querySelector('.text-sm');
+                const mealTime = mealCard.querySelector('.text-xs');
+                const mealType = mealCard.querySelector('.text-xs:last-child');
+                const recurrenceSpan = mealType.querySelector('span');
+                
+                mealName.classList.remove('text-green-900');
+                mealName.classList.add('text-blue-900');
+                mealTime.classList.remove('text-green-700');
+                mealTime.classList.add('text-blue-700');
+                mealType.classList.remove('text-green-600');
+                mealType.classList.add('text-blue-600');
+                if (recurrenceSpan) {
+                    recurrenceSpan.classList.remove('text-green-500');
+                    recurrenceSpan.classList.add('text-blue-500');
+                }
+                
+                // Update button
+                button.classList.remove('bg-green-200', 'hover:bg-green-300');
+                button.querySelector('svg').classList.remove('text-green-600');
+                button.querySelector('svg').classList.add('text-gray-400');
+                button.querySelector('svg').innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>';
+                button.title = 'Mark as completed';
+                
+                location.reload(); // Reload to update nutrition totals
+            } else {
+                alert('Error unmarking meal as completed: ' + JSON.stringify(data));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error unmarking meal as completed');
+        });
+    } else {
+        // Mark as completed
+        fetch(`/meals/meals/${mealId}/complete/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({ 
+                date: date 
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.meal_id) {
+                // Update UI to show as completed
+                mealCard.classList.remove('bg-blue-50', 'border-blue-200');
+                mealCard.classList.add('bg-green-50', 'border-green-200');
+                
+                // Update all text colors
+                const mealName = mealCard.querySelector('.text-sm');
+                const mealTime = mealCard.querySelector('.text-xs');
+                const mealType = mealCard.querySelector('.text-xs:last-child');
+                const recurrenceSpan = mealType.querySelector('span');
+                
+                mealName.classList.remove('text-blue-900');
+                mealName.classList.add('text-green-900');
+                mealTime.classList.remove('text-blue-700');
+                mealTime.classList.add('text-green-700');
+                mealType.classList.remove('text-blue-600');
+                mealType.classList.add('text-green-600');
+                if (recurrenceSpan) {
+                    recurrenceSpan.classList.remove('text-blue-500');
+                    recurrenceSpan.classList.add('text-green-500');
+                }
+                
+                // Update button
+                button.classList.add('bg-green-200', 'hover:bg-green-300');
+                button.querySelector('svg').classList.remove('text-gray-400');
+                button.querySelector('svg').classList.add('text-green-600');
+                button.querySelector('svg').innerHTML = '<path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>';
+                button.title = 'Unmark as completed';
+                
+                location.reload(); // Reload to update nutrition totals
+            } else {
+                alert('Error marking meal as completed: ' + JSON.stringify(data));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error marking meal as completed');
+        });
+    }
+}
+
+// Get CSRF token
+function getCookie(name) {
+    const metaToken = document.querySelector('meta[name="csrf-token"]');
+    if (metaToken && name === 'csrftoken') {
+        return metaToken.getAttribute('content');
+    }
+    
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

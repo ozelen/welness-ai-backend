@@ -35,6 +35,7 @@ class Meal(models.Model):
     # Calendar scheduling
     is_scheduled = models.BooleanField(default=False)
     start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True, help_text="End date for recurrent meals")
     start_time = models.TimeField(null=True, blank=True)
     duration_minutes = models.IntegerField(default=30)
     

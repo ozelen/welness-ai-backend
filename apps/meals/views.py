@@ -2,11 +2,13 @@ from rest_framework import status, generics, permissions, filters
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404, render
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from django.utils import timezone
+from datetime import datetime, timedelta, date
 from .models import (
     Diet, Meal, Category, Ingredient, MealIngredient, 
     MealRecord, MealPreference
@@ -786,6 +788,14 @@ def schedule_meal(request, meal_id):
         from datetime import datetime
         meal.start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
     
+    # Handle end_date field
+    end_date_str = request.data.get('end_date')
+    if end_date_str:
+        from datetime import datetime
+        meal.end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+    else:
+        meal.end_date = None
+    
     # Handle time field
     start_time_str = request.data.get('start_time')
     if start_time_str:
@@ -795,7 +805,7 @@ def schedule_meal(request, meal_id):
     meal.duration_minutes = request.data.get('duration_minutes', 30)
     meal.recurrence_type = request.data.get('recurrence_type', 'none')
     
-    # Handle recurrence_until field
+    # Handle recurrence_until field (for backward compatibility)
     recurrence_until_str = request.data.get('recurrence_until')
     if recurrence_until_str:
         from datetime import datetime
@@ -848,3 +858,336 @@ def unschedule_meal(request, meal_id):
         'name': meal.name,
         'message': 'Meal unscheduled successfully'
     })
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def mark_meal_completed(request, meal_id):
+    """Mark a meal as completed by creating a MealRecord"""
+    try:
+        meal = Meal.objects.get(id=meal_id, diet__user=request.user)
+    except Meal.DoesNotExist:
+        return Response(
+            {'error': 'Meal not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Get date from request or use current date
+    date_str = request.data.get('date')
+    if date_str:
+        try:
+            target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            # Set time to meal's scheduled time or current time
+            if meal.start_time:
+                timestamp = datetime.combine(target_date, meal.start_time)
+            else:
+                timestamp = datetime.combine(target_date, timezone.now().time())
+        except ValueError:
+            return Response(
+                {'error': 'Invalid date format'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    else:
+        timestamp = timezone.now()
+    
+    # Check if meal is already completed for this date
+    existing_record = MealRecord.objects.filter(
+        meal=meal,
+        user=request.user,
+        timestamp__date=timestamp.date()
+    ).first()
+    
+    if existing_record:
+        return Response(
+            {'error': 'Meal already marked as completed for this date'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Create meal record
+    meal_record = MealRecord.objects.create(
+        meal=meal,
+        user=request.user,
+        timestamp=timestamp,
+        feedback=request.data.get('feedback', '')
+    )
+    
+    return Response({
+        'id': meal_record.id,
+        'meal_id': meal.id,
+        'meal_name': meal.name,
+        'timestamp': meal_record.timestamp,
+        'message': 'Meal marked as completed successfully'
+    }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['DELETE'])
+@permission_classes([permissions.IsAuthenticated])
+def unmark_meal_completed(request, meal_id):
+    """Unmark a meal as completed by removing the MealRecord"""
+    try:
+        meal = Meal.objects.get(id=meal_id, diet__user=request.user)
+    except Meal.DoesNotExist:
+        return Response(
+            {'error': 'Meal not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Get timestamp from request or use current date
+    date_str = request.data.get('date')
+    if date_str:
+        try:
+            target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return Response(
+                {'error': 'Invalid date format'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    else:
+        target_date = timezone.now().date()
+    
+    # Find and delete the meal record for this date
+    meal_record = MealRecord.objects.filter(
+        meal=meal,
+        user=request.user,
+        timestamp__date=target_date
+    ).first()
+    
+    if not meal_record:
+        return Response(
+            {'error': 'No meal record found for this date'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    meal_record.delete()
+    
+    return Response({
+        'meal_id': meal.id,
+        'meal_name': meal.name,
+        'message': 'Meal unmarked as completed successfully'
+    })
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def get_meal_completion_status(request, meal_id):
+    """Get completion status of a meal for a specific date"""
+    try:
+        meal = Meal.objects.get(id=meal_id, diet__user=request.user)
+    except Meal.DoesNotExist:
+        return Response(
+            {'error': 'Meal not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Get date from request or use current date
+    date_str = request.GET.get('date')
+    if date_str:
+        try:
+            target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return Response(
+                {'error': 'Invalid date format'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    else:
+        target_date = timezone.now().date()
+    
+    # Check if meal is completed for this date
+    meal_record = MealRecord.objects.filter(
+        meal=meal,
+        user=request.user,
+        timestamp__date=target_date
+    ).first()
+    
+    return Response({
+        'meal_id': meal.id,
+        'meal_name': meal.name,
+        'date': target_date,
+        'is_completed': meal_record is not None,
+        'completion_time': meal_record.timestamp if meal_record else None,
+        'feedback': meal_record.feedback if meal_record else None
+    })
+
+
+@login_required
+def calendar_view(request):
+    """Weekly calendar view for meals"""
+    user = request.user
+    
+    # Get week parameter from URL, default to current week
+    week_param = request.GET.get('week')
+    if week_param:
+        try:
+            # Parse week parameter (format: YYYY-WW)
+            year, week = map(int, week_param.split('-'))
+            # Get the first day of the week (Monday)
+            start_date = date(year, 1, 1) + timedelta(weeks=week-1)
+            # Adjust to Monday
+            while start_date.weekday() != 0:  # Monday is 0
+                start_date -= timedelta(days=1)
+        except (ValueError, TypeError):
+            start_date = timezone.now().date()
+    else:
+        start_date = timezone.now().date()
+    
+    # Calculate week boundaries (Monday to Sunday)
+    days_since_monday = start_date.weekday()
+    week_start = start_date - timedelta(days=days_since_monday)
+    week_end = week_start + timedelta(days=6)
+    
+    # Get all days in the week
+    week_days = []
+    for i in range(7):
+        day_date = week_start + timedelta(days=i)
+        week_days.append(day_date)
+    
+    # Get scheduled meals for the week (including recurrent meals)
+    scheduled_meals = Meal.objects.filter(
+        diet__user=user,
+        is_scheduled=True
+    ).select_related('diet').prefetch_related('mealingredient_set__ingredient')
+    
+    # Create a map of meals by day
+    meals_by_day = {}
+    for day in week_days:
+        meals_by_day[day] = {
+            'scheduled': [],
+            'completed': [],
+            'total_calories': 0,
+            'total_proteins': 0,
+            'total_carbs': 0,
+            'total_fats': 0,
+        }
+    
+    # Process each scheduled meal and add it to the appropriate days
+    for meal in scheduled_meals:
+        # Check if meal has a valid date range
+        meal_start = meal.start_date or week_start
+        meal_end = meal.end_date or meal.recurrence_until
+        
+        # Skip if meal ends before this week starts
+        if meal_end and meal_end < week_start:
+            continue
+            
+        # Skip if meal starts after this week ends
+        if meal_start and meal_start > week_end:
+            continue
+            
+        if meal.recurrence_type == 'none':
+            # Single occurrence - check if it's in this week
+            if meal.start_date and week_start <= meal.start_date <= week_end:
+                meals_by_day[meal.start_date]['scheduled'].append(meal)
+        elif meal.recurrence_type == 'daily':
+            # Daily recurrence - add to every day in the week within the date range
+            for i in range(7):
+                day_date = week_start + timedelta(days=i)
+                if day_date >= meal_start and (not meal_end or day_date <= meal_end):
+                    meals_by_day[day_date]['scheduled'].append(meal)
+        elif meal.recurrence_type == 'weekly':
+            # Weekly recurrence - add to the same day of the week
+            if meal.start_date:
+                # Find the day of week (0=Monday, 6=Sunday)
+                meal_day_of_week = meal.start_date.weekday()
+                # Get the corresponding day in the current week
+                day_date = week_start + timedelta(days=meal_day_of_week)
+                if day_date >= meal_start and (not meal_end or day_date <= meal_end):
+                    meals_by_day[day_date]['scheduled'].append(meal)
+        elif meal.recurrence_type == 'weekday':
+            # Weekdays (Mon-Fri) - add to Monday through Friday
+            for i in range(5):  # Monday to Friday
+                day_date = week_start + timedelta(days=i)
+                if day_date >= meal_start and (not meal_end or day_date <= meal_end):
+                    meals_by_day[day_date]['scheduled'].append(meal)
+        elif meal.recurrence_type == 'weekend':
+            # Weekends (Sat-Sun) - add to Saturday and Sunday
+            for i in range(5, 7):  # Saturday and Sunday
+                day_date = week_start + timedelta(days=i)
+                if day_date >= meal_start and (not meal_end or day_date <= meal_end):
+                    meals_by_day[day_date]['scheduled'].append(meal)
+    
+    # Get meal records for the week (completed meals)
+    meal_records = MealRecord.objects.filter(
+        user=user,
+        timestamp__date__gte=week_start,
+        timestamp__date__lte=week_end
+    ).select_related('meal')
+    
+
+    
+    # Create a set of completed meal IDs for each day to track completion status
+    completed_meal_ids_by_day = {}
+    for day in week_days:
+        completed_meal_ids_by_day[day] = set()
+    
+    # Populate completed meals and calculate nutrition
+    for record in meal_records:
+        day = record.timestamp.date()
+        if day in meals_by_day:
+            completed_meal_ids_by_day[day].add(record.meal.id)
+            
+            # Calculate nutrition for completed meal
+            meal = record.meal
+            for meal_ingredient in meal.mealingredient_set.all():
+                ratio = meal_ingredient.quantity / 100
+                meals_by_day[day]['total_calories'] += meal_ingredient.ingredient.calories * ratio
+                meals_by_day[day]['total_proteins'] += meal_ingredient.ingredient.proteins * ratio
+                meals_by_day[day]['total_carbs'] += meal_ingredient.ingredient.carbs * ratio
+                meals_by_day[day]['total_fats'] += meal_ingredient.ingredient.fats * ratio
+    
+    # Calculate week totals
+    week_totals = {
+        'calories': sum(day['total_calories'] for day in meals_by_day.values()),
+        'proteins': sum(day['total_proteins'] for day in meals_by_day.values()),
+        'carbs': sum(day['total_carbs'] for day in meals_by_day.values()),
+        'fats': sum(day['total_fats'] for day in meals_by_day.values()),
+    }
+    
+    # Get active diet for target nutrition
+    active_diet = Diet.objects.filter(user=user, is_active=True).first()
+    if active_diet:
+        weekly_targets = {
+            'calories': active_diet.day_calories_kcal * 7,
+            'proteins': active_diet.day_proteins_g * 7,
+            'carbs': active_diet.day_carbohydrates_g * 7,
+            'fats': active_diet.day_fats_g * 7,
+        }
+        
+        # Calculate percentages
+        week_percentages = {
+            'calories': (week_totals['calories'] / weekly_targets['calories'] * 100) if weekly_targets['calories'] > 0 else 0,
+            'proteins': (week_totals['proteins'] / weekly_targets['proteins'] * 100) if weekly_targets['proteins'] > 0 else 0,
+            'carbs': (week_totals['carbs'] / weekly_targets['carbs'] * 100) if weekly_targets['carbs'] > 0 else 0,
+            'fats': (week_totals['fats'] / weekly_targets['fats'] * 100) if weekly_targets['fats'] > 0 else 0,
+        }
+    else:
+        weekly_targets = None
+        week_percentages = None
+    
+    # Calculate navigation URLs
+    prev_week = week_start - timedelta(days=7)
+    next_week = week_start + timedelta(days=7)
+    
+    prev_week_param = f"{prev_week.year}-{prev_week.isocalendar()[1]}"
+    next_week_param = f"{next_week.year}-{next_week.isocalendar()[1]}"
+    current_week_param = f"{week_start.year}-{week_start.isocalendar()[1]}"
+    
+    # Get current date for determining which days are editable
+    current_date = timezone.now().date()
+    
+    context = {
+        'week_days': week_days,
+        'meals_by_day': meals_by_day,
+        'completed_meal_ids_by_day': completed_meal_ids_by_day,
+        'week_totals': week_totals,
+        'weekly_targets': weekly_targets,
+        'week_percentages': week_percentages,
+        'active_diet': active_diet,
+        'prev_week_param': prev_week_param,
+        'next_week_param': next_week_param,
+        'current_week_param': current_week_param,
+        'week_start': week_start,
+        'week_end': week_end,
+        'current_date': current_date,
+    }
+    
+    return render(request, 'meals/calendar.html', context)

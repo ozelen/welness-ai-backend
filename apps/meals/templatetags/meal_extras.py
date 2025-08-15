@@ -72,4 +72,10 @@ def format_recurrence(recurrence_type):
         'custom': 'Custom',
         'none': ''
     }
-    return recurrence_map.get(recurrence_type, recurrence_type) 
+    return recurrence_map.get(recurrence_type, recurrence_type)
+
+
+@register.filter
+def in_set(value, set_obj):
+    """Check if value is in set"""
+    return value in set_obj 

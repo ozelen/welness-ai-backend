@@ -9,6 +9,7 @@ urlpatterns = [
     path('preferences-page/', views.preferences_page, name='preferences-page'),
     path('ingredients-page/', views.ingredients_page, name='ingredients-page'),
     path('manage/', views.meals_management_page, name='meals'),
+    path('calendar/', views.calendar_view, name='calendar'),
     
     # Diet endpoints
     path('diets/', views.DietListView.as_view(), name='diet-list'),
@@ -68,4 +69,9 @@ urlpatterns = [
     # Meal scheduling endpoints
     path('meals/<int:meal_id>/schedule/', views.schedule_meal, name='schedule-meal'),
     path('meals/<int:meal_id>/unschedule/', views.unschedule_meal, name='unschedule-meal'),
+    
+    # Meal completion endpoints
+    path('meals/<int:meal_id>/complete/', views.mark_meal_completed, name='mark-meal-completed'),
+    path('meals/<int:meal_id>/uncomplete/', views.unmark_meal_completed, name='unmark-meal-completed'),
+    path('meals/<int:meal_id>/completion-status/', views.get_meal_completion_status, name='get-meal-completion-status'),
 ]

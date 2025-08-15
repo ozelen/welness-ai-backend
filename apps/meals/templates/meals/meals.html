@@ -19,6 +19,12 @@
                     </svg>
                     Add Meal
                 </button>
+                <a href="{% url 'meals:calendar' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    Calendar View
+                </a>
                 <a href="{% url 'meals:dashboard' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                     Back to Dashboard
                 </a>
@@ -103,6 +109,7 @@
              data-meal-id="{{ meal.id }}"
              {% if meal.is_scheduled %}
              data-schedule-date="{{ meal.start_date|date:'Y-m-d' }}"
+             data-schedule-end-date="{{ meal.end_date|date:'Y-m-d'|default:'' }}"
              data-schedule-time="{{ meal.start_time|time:'H:i' }}"
              data-schedule-duration="{{ meal.duration_minutes }}"
              data-schedule-type="{{ meal.meal_type }}"
@@ -421,9 +428,16 @@
                 <input type="hidden" id="schedule_meal_id" name="meal_id">
                 <div class="space-y-4">
                     <div>
-                        <label for="schedule_date" class="block text-sm font-medium text-gray-700">Date *</label>
+                        <label for="schedule_date" class="block text-sm font-medium text-gray-700">Start Date *</label>
                         <input type="date" id="schedule_date" name="start_date" required
                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <div id="end_date_div" class="hidden">
+                        <label for="schedule_end_date" class="block text-sm font-medium text-gray-700">End Date</label>
+                        <input type="date" id="schedule_end_date" name="end_date"
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <p class="text-xs text-gray-500 mt-1">Leave empty for no end date</p>
                     </div>
                     
                     <div>
@@ -802,6 +816,7 @@ function loadExistingSchedule(mealId) {
     
     // Load scheduling data from data attributes
     const scheduleDate = mealCard.dataset.scheduleDate;
+    const scheduleEndDate = mealCard.dataset.scheduleEndDate;
     const scheduleTime = mealCard.dataset.scheduleTime;
     const scheduleDuration = mealCard.dataset.scheduleDuration;
     const scheduleType = mealCard.dataset.scheduleType;
@@ -811,6 +826,10 @@ function loadExistingSchedule(mealId) {
     // Populate the form fields
     if (scheduleDate) {
         document.getElementById('schedule_date').value = scheduleDate;
+    }
+    
+    if (scheduleEndDate) {
+        document.getElementById('schedule_end_date').value = scheduleEndDate;
     }
     
     if (scheduleTime) {
@@ -827,8 +846,9 @@ function loadExistingSchedule(mealId) {
     
     if (scheduleRecurrence) {
         document.getElementById('schedule_recurrence').value = scheduleRecurrence;
-        // Show the recurrence until field if it's not 'none'
+        // Show the end date and recurrence until fields if it's not 'none'
         if (scheduleRecurrence !== 'none') {
+            document.getElementById('end_date_div').classList.remove('hidden');
             document.getElementById('recurrence_until_div').classList.remove('hidden');
         }
     }
@@ -895,7 +915,13 @@ document.addEventListener('DOMContentLoaded', function() {
             meal_type: formData.get('meal_type')
         };
         
-        // Add recurrence until date if provided
+        // Add end date if provided
+        const endDate = formData.get('end_date');
+        if (endDate && data.recurrence_type !== 'none') {
+            data.end_date = endDate;
+        }
+        
+        // Add recurrence until date if provided (for backward compatibility)
         const recurrenceUntil = formData.get('recurrence_until');
         if (recurrenceUntil && data.recurrence_type !== 'none') {
             data.recurrence_until = recurrenceUntil;
@@ -925,12 +951,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Show/hide recurrence until field based on recurrence type
+    // Show/hide end date and recurrence until fields based on recurrence type
     document.getElementById('schedule_recurrence').addEventListener('change', function() {
+        const endDateDiv = document.getElementById('end_date_div');
         const recurrenceUntilDiv = document.getElementById('recurrence_until_div');
+        
         if (this.value !== 'none') {
+            endDateDiv.classList.remove('hidden');
             recurrenceUntilDiv.classList.remove('hidden');
         } else {
+            endDateDiv.classList.add('hidden');
             recurrenceUntilDiv.classList.add('hidden');
         }
     });
