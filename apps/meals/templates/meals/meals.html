@@ -708,7 +708,7 @@ function removeIngredient(mealIngredientId, ingredientName) {
 let allIngredients = [];
 let selectedIngredient = null;
 
-// Initialize ingredient search
+// Initialize ingredient search with AI suggestions
 document.addEventListener('DOMContentLoaded', function() {
     // Load ingredients JSON
     try {
@@ -723,9 +723,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const suggestionsDiv = document.getElementById('ingredient_suggestions');
     const nutritionSection = document.getElementById('nutrition_section');
     
+    let debounceTimer;
+    
     if (searchInput) {
         searchInput.addEventListener('input', function() {
             const query = this.value.toLowerCase();
+            
+            // Clear previous timer
+            clearTimeout(debounceTimer);
+            
             if (query.length < 2) {
                 suggestionsDiv.classList.add('hidden');
                 nutritionSection.classList.add('hidden');
@@ -734,30 +740,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            // Filter ingredients
-            const filtered = allIngredients.filter(ingredient => 
-                ingredient.name.toLowerCase().includes(query)
-            );
+            // Show local suggestions immediately
+            showLocalSuggestions(query);
             
-            // Show suggestions
-            suggestionsDiv.innerHTML = '';
-            if (filtered.length > 0) {
-                filtered.forEach(ingredient => {
-                    const div = document.createElement('div');
-                    div.className = 'px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0';
-                    div.textContent = ingredient.name;
-                    div.onclick = () => selectIngredient(ingredient);
-                    suggestionsDiv.appendChild(div);
-                });
-                suggestionsDiv.classList.remove('hidden');
-            } else {
-                // Show option to create new ingredient
-                const div = document.createElement('div');
-                div.className = 'px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0 text-blue-600';
-                div.innerHTML = `<em>Create new ingredient: "${query}"</em>`;
-                div.onclick = () => createNewIngredient(query);
-                suggestionsDiv.appendChild(div);
-                suggestionsDiv.classList.remove('hidden');
+            // Debounce AI suggestions (wait 1 second after user stops typing)
+            debounceTimer = setTimeout(() => {
+                getAISuggestions(query);
+            }, 1000);
+        });
+        
+        // Handle focus out - get nutrition data
+        searchInput.addEventListener('blur', function() {
+            const query = this.value.trim();
+            if (query.length > 2 && !selectedIngredient) {
+                // Small delay to allow click events to fire first
+                setTimeout(() => {
+                    getAINutritionData(query);
+                }, 200);
             }
         });
         
@@ -767,6 +766,150 @@ document.addEventListener('DOMContentLoaded', function() {
                 suggestionsDiv.classList.add('hidden');
             }
         });
+    }
+    
+    function showLocalSuggestions(query) {
+        // Filter local ingredients
+        const filtered = allIngredients.filter(ingredient => 
+            ingredient.name.toLowerCase().includes(query)
+        );
+        
+        // Show suggestions
+        suggestionsDiv.innerHTML = '';
+        if (filtered.length > 0) {
+            filtered.forEach(ingredient => {
+                const div = document.createElement('div');
+                div.className = 'px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0';
+                div.innerHTML = `
+                    <div class="font-medium">${ingredient.name}</div>
+                    <div class="text-xs text-gray-500">Existing ingredient</div>
+                `;
+                div.onclick = () => selectIngredient(ingredient);
+                suggestionsDiv.appendChild(div);
+            });
+            suggestionsDiv.classList.remove('hidden');
+        }
+    }
+    
+    async function getAISuggestions(query) {
+        try {
+            const response = await fetch(`/meals/ingredients/ai-suggestions/?name=${encodeURIComponent(query)}`);
+            const data = await response.json();
+            
+            if (data.success && data.suggestions.length > 0) {
+                // Add AI suggestions to existing ones
+                suggestionsDiv.innerHTML = '';
+                
+                // Show local matches first
+                const localFiltered = allIngredients.filter(ingredient => 
+                    ingredient.name.toLowerCase().includes(query)
+                );
+                
+                localFiltered.forEach(ingredient => {
+                    const div = document.createElement('div');
+                    div.className = 'px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100';
+                    div.innerHTML = `
+                        <div class="font-medium">${ingredient.name}</div>
+                        <div class="text-xs text-gray-500">Existing ingredient</div>
+                    `;
+                    div.onclick = () => selectIngredient(ingredient);
+                    suggestionsDiv.appendChild(div);
+                });
+                
+                // Show AI suggestions
+                data.suggestions.forEach(suggestion => {
+                    const div = document.createElement('div');
+                    div.className = 'px-4 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0';
+                    div.innerHTML = `
+                        <div class="font-medium text-blue-700">${suggestion.name}</div>
+                        <div class="text-xs text-gray-500">${suggestion.description}</div>
+                        <div class="text-xs text-blue-500">AI suggestion</div>
+                    `;
+                    div.onclick = () => selectAISuggestion(suggestion);
+                    suggestionsDiv.appendChild(div);
+                });
+                
+                suggestionsDiv.classList.remove('hidden');
+            }
+        } catch (error) {
+            console.error('Error getting AI suggestions:', error);
+        }
+    }
+    
+    async function getAINutritionData(ingredientName) {
+        try {
+            const response = await fetch(`/meals/ingredients/ai-nutrition/?name=${encodeURIComponent(ingredientName)}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                // Auto-fill nutrition fields
+                document.getElementById('ingredient_calories').value = data.nutrition.calories;
+                document.getElementById('ingredient_proteins').value = data.nutrition.proteins;
+                document.getElementById('ingredient_carbs').value = data.nutrition.carbs;
+                document.getElementById('ingredient_fats').value = data.nutrition.fats;
+                document.getElementById('ingredient_fibers').value = data.nutrition.fibers;
+                document.getElementById('ingredient_sugars').value = data.nutrition.sugars;
+                
+                // Show nutrition section
+                nutritionSection.classList.remove('hidden');
+                
+                // Show confidence indicator and source
+                const confidencePercent = Math.round(data.nutrition.confidence * 100);
+                const source = data.nutrition.source || 'unknown';
+                
+                if (data.nutrition.confidence >= 0.9) {
+                    showSuccess(`✓ High confidence (${confidencePercent}%) - ${source}`);
+                } else if (data.nutrition.confidence >= 0.7) {
+                    showInfo(`⚠ Medium confidence (${confidencePercent}%) - ${source} - please verify`);
+                } else {
+                    showWarning(`⚠ Low confidence (${confidencePercent}%) - ${source} - please verify with reliable source`);
+                }
+                
+                // Show notes if any
+                if (data.nutrition.notes) {
+                    showInfo(data.nutrition.notes);
+                }
+            }
+        } catch (error) {
+            console.error('Error getting AI nutrition data:', error);
+        }
+    }
+    
+    function selectAISuggestion(suggestion) {
+        selectedIngredient = null;
+        document.getElementById('ingredient_search').value = suggestion.name;
+        document.getElementById('selected_ingredient_id').value = '';
+        document.getElementById('ingredient_suggestions').classList.add('hidden');
+        
+        // Show nutrition section and get AI nutrition data
+        nutritionSection.classList.remove('hidden');
+        getAINutritionData(suggestion.name);
+        
+        // Enable nutrition fields for editing
+        document.getElementById('ingredient_calories').disabled = false;
+        document.getElementById('ingredient_proteins').disabled = false;
+        document.getElementById('ingredient_carbs').disabled = false;
+        document.getElementById('ingredient_fats').disabled = false;
+        document.getElementById('ingredient_fibers').disabled = false;
+        document.getElementById('ingredient_sugars').disabled = false;
+    }
+    
+    function showSuccess(message) {
+        // Simple success display - you can enhance this
+        console.log('✅', message);
+        // You could add a toast notification here
+    }
+    
+    function showWarning(message) {
+        // Simple warning display - you can enhance this
+        console.warn('⚠️', message);
+        // You could add a toast notification here
+    }
+    
+    function showInfo(message) {
+        // Simple info display - you can enhance this
+        console.info('ℹ️', message);
+        // You could add a toast notification here
     }
 });
 

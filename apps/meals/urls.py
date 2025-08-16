@@ -87,4 +87,8 @@ urlpatterns = [
     
     # Delete meal record
     path('meals/record/<int:record_id>/delete/', views.delete_meal_record, name='delete-meal-record'),
+    
+    # AI-powered ingredient suggestions and nutrition
+    path('ingredients/ai-suggestions/', views.ai_ingredient_suggestions, name='ai-ingredient-suggestions'),
+    path('ingredients/ai-nutrition/', views.ai_nutrition_lookup, name='ai-nutrition-lookup'),
 ]
