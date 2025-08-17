@@ -1,0 +1,508 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Measurements{% endblock %}
+
+{% block extra_css %}
+<style>
+    .measurements-container {
+        background: white;
+        border-radius: 15px;
+        padding: 2rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .section-header {
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #f0f0f0;
+    }
+    
+    .metric-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 0;
+        border-bottom: 1px solid #f8f9fa;
+    }
+    
+    .metric-item:last-child {
+        border-bottom: none;
+    }
+    
+    .metric-info {
+        flex: 1;
+    }
+    
+    .metric-name {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 0.25rem;
+    }
+    
+    .metric-value {
+        color: #666;
+        font-size: 0.9rem;
+    }
+    
+    .metric-unit {
+        color: #999;
+        font-size: 0.8rem;
+    }
+    
+    .add-button {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #007bff;
+        border: none;
+        color: white;
+        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-left: 1rem;
+    }
+    
+    .add-button:hover {
+        background: #0056b3;
+        transform: scale(1.1);
+    }
+    
+    .add-button:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+    }
+    
+    .no-value {
+        color: #999;
+        font-style: italic;
+    }
+    
+    .apple-health-notice {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 1rem 0;
+        color: #666;
+        font-size: 0.9rem;
+        border-left: 4px solid #007bff;
+    }
+    
+    .form-modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+    }
+    
+    .form-modal-content {
+        background-color: white;
+        margin: 5% auto;
+        padding: 2rem;
+        border-radius: 15px;
+        width: 90%;
+        max-width: 500px;
+        position: relative;
+    }
+    
+    .close-modal {
+        position: absolute;
+        right: 1rem;
+        top: 1rem;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #999;
+    }
+    
+    .close-modal:hover {
+        color: #333;
+    }
+    
+    .metric-categories {
+        margin-bottom: 2rem;
+    }
+    
+    .category-tabs {
+        display: flex;
+        border-bottom: 2px solid #f0f0f0;
+        margin-bottom: 2rem;
+    }
+    
+    .category-tab {
+        padding: 0.75rem 1.5rem;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: #666;
+        font-weight: 500;
+        border-bottom: 3px solid transparent;
+        transition: all 0.3s ease;
+    }
+    
+    .category-tab.active {
+        color: #007bff;
+        border-bottom-color: #007bff;
+    }
+    
+    .category-content {
+        display: none;
+    }
+    
+    .category-content.active {
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">
+                    <i class="fas fa-ruler text-primary"></i>
+                    Measurements
+                </h1>
+                <div>
+                    <a href="{% url 'metrics:calculator_form' %}" class="btn btn-primary">
+                        <i class="fas fa-calculator"></i> Health Calculator
+                    </a>
+                    <a href="{% url 'metrics:dashboard' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+
+            <div class="measurements-container">
+                <!-- Apple Health Notice -->
+                <div class="apple-health-notice">
+                    <i class="fas fa-info-circle"></i>
+                    Enable Apple Health in Settings > App Integrations to sync your measurements data.
+                </div>
+
+                <!-- Category Tabs -->
+                <div class="category-tabs">
+                    <button class="category-tab active" onclick="showCategory('core')">CORE</button>
+                    <button class="category-tab" onclick="showCategory('body')">BODY PART</button>
+                    <button class="category-tab" onclick="showCategory('lab')">LAB RESULTS</button>
+                    <button class="category-tab" onclick="showCategory('fitness')">FITNESS</button>
+                    <button class="category-tab" onclick="showCategory('nutrition')">NUTRITION</button>
+                </div>
+
+                <!-- CORE Metrics -->
+                <div id="core" class="category-content active">
+                    <h3 class="section-header">CORE</h3>
+                    
+                    <!-- Gender -->
+                    <div class="metric-item">
+                        <div class="metric-info">
+                            <div class="metric-name">Gender</div>
+                            <div class="metric-value" id="gender-value">
+                                {% if user.profile.gender %}
+                                    {{ user.profile.get_gender_display }}
+                                {% else %}
+                                    <span class="no-value">Not set</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <button class="add-button" onclick="openMetricForm('Gender', 'vital_sign', '')">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+
+                    <!-- Age -->
+                    <div class="metric-item">
+                        <div class="metric-info">
+                            <div class="metric-name">Age</div>
+                            <div class="metric-value" id="age-value">
+                                {% if user.profile.date_of_birth %}
+                                    {{ user.profile.get_age }} years
+                                {% else %}
+                                    <span class="no-value">Not set</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <button class="add-button" onclick="openMetricForm('Age', 'vital_sign', 'years')">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+
+                    <!-- Height -->
+                    <div class="metric-item">
+                        <div class="metric-info">
+                            <div class="metric-name">Height</div>
+                            <div class="metric-value" id="height-value">
+                                {% if latest_measurements.height_cm %}
+                                    {{ latest_measurements.height_cm }} cm
+                                {% else %}
+                                    <span class="no-value">Not measured</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <button class="add-button" onclick="openMetricForm('Height', 'body_measurement', 'cm')">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+
+                    <!-- Weight -->
+                    <div class="metric-item">
+                        <div class="metric-info">
+                            <div class="metric-name">Weight</div>
+                            <div class="metric-value" id="weight-value">
+                                {% if latest_measurements.weight_kg %}
+                                    {{ latest_measurements.weight_kg }} kg
+                                {% else %}
+                                    <span class="no-value">Not measured</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <button class="add-button" onclick="openMetricForm('Weight', 'body_measurement', 'kg')">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+
+                    <!-- Body Fat -->
+                    <div class="metric-item">
+                        <div class="metric-info">
+                            <div class="metric-name">Body Fat</div>
+                            <div class="metric-value" id="body-fat-value">
+                                {% if latest_measurements.body_fat_percentage %}
+                                    {{ latest_measurements.body_fat_percentage }}%
+                                {% else %}
+                                    <span class="no-value">Not measured</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <button class="add-button" onclick="openMetricForm('Body Fat Percentage', 'body_measurement', '%')">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+
+                    <!-- Caloric Intake -->
+                    <div class="metric-item">
+                        <div class="metric-info">
+                            <div class="metric-name">Caloric Intake</div>
+                            <div class="metric-value" id="calories-value">
+                                <span class="no-value">Not tracked</span>
+                            </div>
+                        </div>
+                        <button class="add-button" onclick="openMetricForm('Daily Calories', 'nutrition', 'kcal')">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- BODY PART Metrics -->
+                <div id="body" class="category-content">
+                    <h3 class="section-header">BODY PART</h3>
+                    
+                    {% for metric in available_metrics %}
+                        {% if metric.type == 'body_measurement' and metric.name not in 'Weight,Height,Body Fat Percentage' %}
+                        <div class="metric-item">
+                            <div class="metric-info">
+                                <div class="metric-name">{{ metric.name }}</div>
+                                <div class="metric-value" id="{{ metric.name|lower }}-value">
+                                    <span class="no-value">Not measured</span>
+                                </div>
+                            </div>
+                            <button class="add-button" onclick="openMetricForm('{{ metric.name }}', '{{ metric.type }}', '{{ metric.unit }}')">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+
+                <!-- LAB RESULTS -->
+                <div id="lab" class="category-content">
+                    <h3 class="section-header">LAB RESULTS</h3>
+                    
+                    {% for metric in available_metrics %}
+                        {% if metric.type == 'lab_result' %}
+                        <div class="metric-item">
+                            <div class="metric-info">
+                                <div class="metric-name">{{ metric.name }}</div>
+                                <div class="metric-value" id="{{ metric.name|lower }}-value">
+                                    <span class="no-value">No results</span>
+                                </div>
+                            </div>
+                            <button class="add-button" onclick="openMetricForm('{{ metric.name }}', '{{ metric.type }}', '{{ metric.unit }}')">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+
+                <!-- FITNESS Metrics -->
+                <div id="fitness" class="category-content">
+                    <h3 class="section-header">FITNESS</h3>
+                    
+                    {% for metric in available_metrics %}
+                        {% if metric.type == 'fitness' %}
+                        <div class="metric-item">
+                            <div class="metric-info">
+                                <div class="metric-name">{{ metric.name }}</div>
+                                <div class="metric-value" id="{{ metric.name|lower }}-value">
+                                    <span class="no-value">Not tracked</span>
+                                </div>
+                            </div>
+                            <button class="add-button" onclick="openMetricForm('{{ metric.name }}', '{{ metric.type }}', '{{ metric.unit }}')">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+
+                <!-- NUTRITION Metrics -->
+                <div id="nutrition" class="category-content">
+                    <h3 class="section-header">NUTRITION</h3>
+                    
+                    {% for metric in available_metrics %}
+                        {% if metric.type == 'nutrition' %}
+                        <div class="metric-item">
+                            <div class="metric-info">
+                                <div class="metric-name">{{ metric.name }}</div>
+                                <div class="metric-value" id="{{ metric.name|lower }}-value">
+                                    <span class="no-value">Not tracked</span>
+                                </div>
+                            </div>
+                            <button class="add-button" onclick="openMetricForm('{{ metric.name }}', '{{ metric.type }}', '{{ metric.unit }}')">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Metric Form Modal -->
+<div id="metricModal" class="form-modal">
+    <div class="form-modal-content">
+        <span class="close-modal" onclick="closeModal()">&times;</span>
+        <h4 id="modalTitle">Add Measurement</h4>
+        
+        <form id="metricForm" method="post">
+            {% csrf_token %}
+            <input type="hidden" id="metricName" name="metric_name">
+            <input type="hidden" id="metricType" name="metric_type">
+            <input type="hidden" id="metricUnit" name="metric_unit">
+            
+            <div class="mb-3">
+                <label for="metricValue" class="form-label">Value</label>
+                <input type="number" class="form-control" id="metricValue" name="value" step="0.1" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="measurementType" class="form-label">Measurement Type</label>
+                <select class="form-control" id="measurementType" name="measurement_type">
+                    <option value="log">Log</option>
+                    <option value="baseline">Baseline</option>
+                    <option value="target">Target</option>
+                    <option value="goal">Goal</option>
+                </select>
+            </div>
+            
+            <div class="mb-3">
+                <label for="source" class="form-label">Source (optional)</label>
+                <input type="text" class="form-control" id="source" name="source" placeholder="e.g., Home Scale, Lab Corp">
+            </div>
+            
+            <div class="mb-3">
+                <label for="notes" class="form-label">Notes (optional)</label>
+                <textarea class="form-control" id="notes" name="notes" rows="2"></textarea>
+            </div>
+            
+            <div class="d-flex justify-content-end gap-2">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Measurement</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showCategory(category) {
+    // Hide all category contents
+    document.querySelectorAll('.category-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    
+    // Remove active class from all tabs
+    document.querySelectorAll('.category-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Show selected category
+    document.getElementById(category).classList.add('active');
+    
+    // Add active class to clicked tab
+    event.target.classList.add('active');
+}
+
+function openMetricForm(metricName, metricType, metricUnit) {
+    document.getElementById('modalTitle').textContent = `Add ${metricName}`;
+    document.getElementById('metricName').value = metricName;
+    document.getElementById('metricType').value = metricType;
+    document.getElementById('metricUnit').value = metricUnit;
+    document.getElementById('metricModal').style.display = 'block';
+}
+
+function closeModal() {
+    document.getElementById('metricModal').style.display = 'none';
+    document.getElementById('metricForm').reset();
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('metricModal');
+    if (event.target == modal) {
+        closeModal();
+    }
+}
+
+// Handle form submission
+document.getElementById('metricForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch('{% url "metrics:metric_values" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeModal();
+            location.reload(); // Refresh to show new data
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while saving the measurement.');
+    });
+});
+</script>
+{% endblock %}

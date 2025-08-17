@@ -1,0 +1,271 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Health Calculator Results{% endblock %}
+
+{% block extra_css %}
+<style>
+    .result-card {
+        background: white;
+        border-radius: 15px;
+        padding: 2rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+    
+    .metric-display {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        text-align: center;
+    }
+    
+    .metric-value {
+        font-size: 3rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+    
+    .metric-label {
+        font-size: 1rem;
+        opacity: 0.9;
+    }
+    
+    .metric-unit {
+        font-size: 0.8rem;
+        opacity: 0.7;
+    }
+    
+    .recommendation-card {
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border-left: 4px solid;
+    }
+    
+    .recommendation-success {
+        background: #d4edda;
+        border-left-color: #28a745;
+    }
+    
+    .recommendation-warning {
+        background: #fff3cd;
+        border-left-color: #ffc107;
+    }
+    
+    .recommendation-info {
+        background: #d1ecf1;
+        border-left-color: #17a2b8;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .input-summary {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .input-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .input-item:last-child {
+        border-bottom: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">
+                    <i class="fas fa-chart-line text-success"></i>
+                    Health Calculator Results
+                </h1>
+                <div>
+                    <a href="{% url 'metrics:calculator_form' %}" class="btn btn-primary">
+                        <i class="fas fa-calculator"></i> New Calculation
+                    </a>
+                    <a href="{% url 'metrics:dashboard' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+
+            <!-- Input Summary -->
+            <div class="input-summary">
+                <h5 class="mb-3">
+                    <i class="fas fa-info-circle text-primary"></i>
+                    Input Data
+                </h5>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="input-item">
+                            <span>Weight:</span>
+                            <strong>{{ calculator.weight_kg }} kg</strong>
+                        </div>
+                        <div class="input-item">
+                            <span>Height:</span>
+                            <strong>{{ calculator.height_cm }} cm</strong>
+                        </div>
+                        <div class="input-item">
+                            <span>Body Fat:</span>
+                            <strong>{{ calculator.body_fat_percentage }}%</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="input-item">
+                            <span>Gender:</span>
+                            <strong>{{ calculator.get_gender_display }}</strong>
+                        </div>
+                        <div class="input-item">
+                            <span>Activity Level:</span>
+                            <strong>{{ calculator.get_activity_level_display }}</strong>
+                        </div>
+                        <div class="input-item">
+                            <span>Age:</span>
+                            <strong>{{ calculator.get_age|default:"Not specified" }} years</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calculated Results -->
+            <div class="result-card">
+                <h4 class="mb-4">
+                    <i class="fas fa-calculator text-primary"></i>
+                    Calculated Health Metrics
+                </h4>
+                
+                <div class="stats-grid">
+                    <div class="metric-display">
+                        <div class="metric-value">{{ calculated_results.lbm_kg|floatformat:1|default:"-" }}</div>
+                        <div class="metric-label">Lean Body Mass</div>
+                        <div class="metric-unit">kg</div>
+                    </div>
+                    
+                    <div class="metric-display">
+                        <div class="metric-value">{{ calculated_results.bmr_kcal|floatformat:0|default:"-" }}</div>
+                        <div class="metric-label">Basal Metabolic Rate</div>
+                        <div class="metric-unit">kcal/day</div>
+                    </div>
+                    
+                    <div class="metric-display">
+                        <div class="metric-value">{{ calculated_results.tdee_kcal|floatformat:0|default:"-" }}</div>
+                        <div class="metric-label">Total Daily Energy Expenditure</div>
+                        <div class="metric-unit">kcal/day</div>
+                    </div>
+                    
+                    <div class="metric-display">
+                        <div class="metric-value">{{ calculated_results.bmi|floatformat:1|default:"-" }}</div>
+                        <div class="metric-label">Body Mass Index</div>
+                        <div class="metric-unit">{{ bmi_category|default:"" }}</div>
+                    </div>
+                    
+                    <div class="metric-display">
+                        <div class="metric-value">{{ calculated_results.body_fat_mass_kg|floatformat:1|default:"-" }}</div>
+                        <div class="metric-label">Body Fat Mass</div>
+                        <div class="metric-unit">kg</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Health Recommendations -->
+            {% if recommendations %}
+            <div class="result-card">
+                <h4 class="mb-4">
+                    <i class="fas fa-lightbulb text-warning"></i>
+                    Health Recommendations
+                </h4>
+                
+                {% for recommendation in recommendations %}
+                <div class="recommendation-card recommendation-{{ recommendation.type }}">
+                    <h6 class="mb-2">
+                        {% if recommendation.type == 'success' %}
+                            <i class="fas fa-check-circle text-success"></i>
+                        {% elif recommendation.type == 'warning' %}
+                            <i class="fas fa-exclamation-triangle text-warning"></i>
+                        {% elif recommendation.type == 'info' %}
+                            <i class="fas fa-info-circle text-info"></i>
+                        {% endif %}
+                        {{ recommendation.title }}
+                    </h6>
+                    <p class="mb-0">{{ recommendation.message }}</p>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Calculation Details -->
+            <div class="result-card">
+                <h4 class="mb-4">
+                    <i class="fas fa-cogs text-secondary"></i>
+                    Calculation Details
+                </h4>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>LBM Formula</h6>
+                        <p class="text-muted">
+                            Lean Body Mass = Weight × (1 - Body Fat % / 100)<br>
+                            <strong>Your calculation:</strong> {{ calculator.weight_kg }} × (1 - {{ calculator.body_fat_percentage }}/100) = {{ calculated_results.lbm_kg|floatformat:1 }} kg
+                        </p>
+                        
+                        <h6>BMI Formula</h6>
+                        <p class="text-muted">
+                            BMI = Weight (kg) / Height (m)²<br>
+                            <strong>Your calculation:</strong> {{ calculator.weight_kg }} / ({{ calculator.height_cm|div:100 }})² = {{ calculated_results.bmi|floatformat:1 }}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>BMR Formula (Mifflin-St Jeor)</h6>
+                        <p class="text-muted">
+                            {% if calculator.gender == 'male' %}
+                                BMR = 10 × weight + 6.25 × height - 5 × age + 5<br>
+                                <strong>Your calculation:</strong> 10 × {{ calculator.weight_kg }} + 6.25 × {{ calculator.height_cm }} - 5 × {{ calculator.get_age|default:"?" }} + 5 = {{ calculated_results.bmr_kcal|floatformat:0 }} kcal/day
+                            {% else %}
+                                BMR = 10 × weight + 6.25 × height - 5 × age - 161<br>
+                                <strong>Your calculation:</strong> 10 × {{ calculator.weight_kg }} + 6.25 × {{ calculator.height_cm }} - 5 × {{ calculator.get_age|default:"?" }} - 161 = {{ calculated_results.bmr_kcal|floatformat:0 }} kcal/day
+                            {% endif %}
+                        </p>
+                        
+                        <h6>TDEE Formula</h6>
+                        <p class="text-muted">
+                            TDEE = BMR × Activity Multiplier<br>
+                            <strong>Your calculation:</strong> {{ calculated_results.bmr_kcal|floatformat:0 }} × {{ calculator.get_activity_level_display }} = {{ calculated_results.tdee_kcal|floatformat:0 }} kcal/day
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="text-center">
+                <a href="{% url 'metrics:metric_values' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-ruler"></i> Add Measurements
+                </a>
+                <a href="{% url 'metrics:activity_log' %}" class="btn btn-outline-success">
+                    <i class="fas fa-running"></i> Log Activity
+                </a>
+                <a href="{% url 'metrics:measurement_history' %}" class="btn btn-outline-info">
+                    <i class="fas fa-chart-line"></i> View History
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

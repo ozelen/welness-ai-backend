@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'bots.apps.BotsConfig',
     'agents.apps.AgentsConfig',
     'user_auth.apps.UserAuthConfig',
+    'metrics.apps.MetricsConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

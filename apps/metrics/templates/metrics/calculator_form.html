@@ -1,0 +1,286 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Health Calculator{% endblock %}
+
+{% block extra_css %}
+<style>
+    .calculator-form {
+        background: white;
+        border-radius: 15px;
+        padding: 2rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+    
+    .form-section {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-section h5 {
+        color: #495057;
+        margin-bottom: 1rem;
+        border-bottom: 2px solid #dee2e6;
+        padding-bottom: 0.5rem;
+    }
+    
+    .latest-measurements {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .measurement-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    .measurement-item:last-child {
+        border-bottom: none;
+    }
+    
+    .btn-calculate {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        padding: 1rem 2rem;
+        border-radius: 25px;
+        font-weight: bold;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-calculate:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        color: white;
+    }
+    
+    .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">
+                    <i class="fas fa-calculator text-primary"></i>
+                    Health Calculator
+                </h1>
+                <a href="{% url 'metrics:dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+
+            <!-- Latest Measurements -->
+            {% if latest_measurements.weight_kg or latest_measurements.height_cm or latest_measurements.body_fat_percentage %}
+            <div class="latest-measurements">
+                <h5 class="mb-3">
+                    <i class="fas fa-info-circle"></i>
+                    Latest Measurements
+                </h5>
+                {% if latest_measurements.weight_kg %}
+                <div class="measurement-item">
+                    <span>Weight:</span>
+                    <strong>{{ latest_measurements.weight_kg }} kg</strong>
+                </div>
+                {% endif %}
+                {% if latest_measurements.height_cm %}
+                <div class="measurement-item">
+                    <span>Height:</span>
+                    <strong>{{ latest_measurements.height_cm }} cm</strong>
+                </div>
+                {% endif %}
+                {% if latest_measurements.body_fat_percentage %}
+                <div class="measurement-item">
+                    <span>Body Fat:</span>
+                    <strong>{{ latest_measurements.body_fat_percentage }}%</strong>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <div class="calculator-form">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <!-- Basic Information -->
+                    <div class="form-section">
+                        <h5>
+                            <i class="fas fa-user text-primary"></i>
+                            Basic Information
+                        </h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.weight_kg.id_for_label }}" class="form-label">
+                                        Weight (kg) <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.weight_kg }}
+                                    {% if form.weight_kg.errors %}
+                                    <div class="text-danger small">{{ form.weight_kg.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.height_cm.id_for_label }}" class="form-label">
+                                        Height (cm) <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.height_cm }}
+                                    {% if form.height_cm.errors %}
+                                    <div class="text-danger small">{{ form.height_cm.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.body_fat_percentage.id_for_label }}" class="form-label">
+                                        Body Fat Percentage (%) <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.body_fat_percentage }}
+                                    {% if form.body_fat_percentage.errors %}
+                                    <div class="text-danger small">{{ form.body_fat_percentage.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.gender.id_for_label }}" class="form-label">
+                                        Gender <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.gender }}
+                                    {% if form.gender.errors %}
+                                    <div class="text-danger small">{{ form.gender.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Activity Information -->
+                    <div class="form-section">
+                        <h5>
+                            <i class="fas fa-running text-success"></i>
+                            Activity Information
+                        </h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.activity_level.id_for_label }}" class="form-label">
+                                        Activity Level <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.activity_level }}
+                                    {% if form.activity_level.errors %}
+                                    <div class="text-danger small">{{ form.activity_level.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <small>
+                                            <strong>Sedentary:</strong> Little or no exercise<br>
+                                            <strong>Lightly Active:</strong> Light exercise 1-3 days/week<br>
+                                            <strong>Moderately Active:</strong> Moderate exercise 3-5 days/week<br>
+                                            <strong>Very Active:</strong> Hard exercise 6-7 days/week<br>
+                                            <strong>Extremely Active:</strong> Very hard exercise, physical job
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.activity_hours_per_week.id_for_label }}" class="form-label">
+                                        Exercise Hours per Week
+                                    </label>
+                                    {{ form.activity_hours_per_week }}
+                                    {% if form.activity_hours_per_week.errors %}
+                                    <div class="text-danger small">{{ form.activity_hours_per_week.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Additional Notes -->
+                    <div class="form-section">
+                        <h5>
+                            <i class="fas fa-sticky-note text-warning"></i>
+                            Additional Notes
+                        </h5>
+                        <div class="mb-3">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                Notes (Optional)
+                            </label>
+                            {{ form.notes }}
+                            {% if form.notes.errors %}
+                            <div class="text-danger small">{{ form.notes.errors.0 }}</div>
+                            {% endif %}
+                            <div class="form-text">
+                                Add any additional information about your current health status, goals, or special circumstances.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-calculate">
+                            <i class="fas fa-calculator"></i>
+                            Calculate Health Metrics
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Information Cards -->
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <i class="fas fa-weight text-primary fa-2x mb-2"></i>
+                            <h6>LBM Calculation</h6>
+                            <small class="text-muted">
+                                Lean Body Mass = Weight × (1 - Body Fat % / 100)
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <i class="fas fa-fire text-warning fa-2x mb-2"></i>
+                            <h6>BMR Calculation</h6>
+                            <small class="text-muted">
+                                Uses Mifflin-St Jeor Equation for accurate metabolic rate
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <i class="fas fa-chart-line text-success fa-2x mb-2"></i>
+                            <h6>TDEE Calculation</h6>
+                            <small class="text-muted">
+                                Total Daily Energy Expenditure = BMR × Activity Multiplier
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

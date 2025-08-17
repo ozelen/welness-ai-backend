@@ -1,0 +1,735 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Health Metrics Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">Health Metrics Dashboard</h1>
+                <p class="text-gray-600">Track your progress with current, previous, and target values</p>
+            </div>
+            <div class="flex space-x-3">
+                <a href="{% url 'metrics:calculator_form' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    <span class="material-icons text-lg mr-2">calculate</span>
+                    Health Calculator
+                </a>
+                <a href="{% url 'metrics:metric_values' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    <span class="material-icons text-lg mr-2">add</span>
+                    Add Measurements
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tracked Metrics (Favorites) -->
+    {% if favorite_metrics %}
+    <div class="bg-white rounded-lg shadow mb-6">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-xl font-semibold text-gray-900 flex items-center">
+                <span class="material-icons text-lg mr-2">star</span>
+                Tracked Metrics
+            </h2>
+            <p class="text-sm text-gray-600 mt-1">Your most important metrics - click the eye icon to stop tracking</p>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-blue-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-blue-600 uppercase tracking-wider">Metric</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-blue-600 uppercase tracking-wider">Previous (Week Ago)</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-blue-600 uppercase tracking-wider">Current</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-blue-600 uppercase tracking-wider">Target</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-blue-600 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for data in metrics_data %}
+                    {% if data.metric.id in favorite_metric_ids %}
+                    <tr class="hover:bg-blue-50 transition-colors duration-200 tracked-metric-row" 
+                        data-category="{{ data.metric.type }}">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex-1 min-w-0">
+                                <div class="text-sm font-medium text-gray-900">
+                                    {{ data.metric.name }}
+                                    {% if data.metric.is_calculated %}
+                                        <span class="material-icons text-blue-600 text-xs ml-1" title="Calculated metric">calculate</span>
+                                    {% endif %}
+                                </div>
+                                <div class="text-xs text-gray-500 uppercase tracking-wide">{{ data.metric.type_display }}</div>
+                                <div class="text-xs text-gray-400">{{ data.metric.unit }}</div>
+                                {% if data.metric.metric_id %}
+                                <div class="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded mt-1 inline-block">ID: {{ data.metric.metric_id }}</div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            {% if data.previous_value %}
+                                <div class="text-sm text-gray-700">{{ data.previous_value }}</div>
+                            {% else %}
+                                <div class="text-sm text-gray-400 italic">No data</div>
+                            {% endif %}
+                        </td>
+                        
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            {% if data.current_value %}
+                                <div class="text-lg font-semibold {% if data.metric.is_calculated %}text-purple-600{% else %}text-green-600{% endif %}">
+                                    {{ data.current_value }}
+                                    {% if data.metric.is_calculated %}
+                                        <span class="material-icons text-xs ml-1" title="Calculated value">calculate</span>
+                                    {% endif %}
+                                </div>
+                                {% if data.current_timestamp %}
+                                    <div class="text-xs text-gray-500">{{ data.current_timestamp|date:"M d" }}</div>
+                                {% endif %}
+                                {% if data.previous_value and data.current_value != data.previous_value %}
+                                    {% if data.current_value > data.previous_value %}
+                                        <div class="text-xs text-green-600 flex items-center justify-center mt-1">
+                                            <span class="material-icons text-sm mr-1">trending_up</span>
+                                            +{{ data.current_value|add:data.previous_value|floatformat:1 }}
+                                        </div>
+                                    {% else %}
+                                        <div class="text-xs text-red-600 flex items-center justify-center mt-1">
+                                            <span class="material-icons text-sm mr-1">trending_down</span>
+                                            {{ data.current_value|add:data.previous_value|floatformat:1 }}
+                                        </div>
+                                    {% endif %}
+                                {% endif %}
+                                <div class="mt-2">
+                                    {% if data.metric.is_calculated %}
+                                        <button onclick="event.stopPropagation(); showFormulaInfo('{{ data.metric.name }}', '{{ data.metric.calculation_formula|default:"" }}')" 
+                                                class="p-1 rounded-full hover:bg-blue-100 transition-colors duration-200"
+                                                title="View formula information">
+                                            <span class="material-icons text-blue-600 text-sm">help</span>
+                                        </button>
+                                    {% else %}
+                                        <button onclick="event.stopPropagation(); editMeasurement('{{ data.metric.name }}', '{{ data.metric.type }}', '{{ data.metric.unit }}', {{ data.current_value }}, {{ data.metric.is_calculated|yesno:'true,false' }}, '{{ data.metric.calculation_formula|default:"" }}')" 
+                                                class="p-1 rounded-full hover:bg-blue-100 transition-colors duration-200"
+                                                title="Edit measurement">
+                                            <span class="material-icons text-blue-600 text-sm">edit</span>
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <div class="text-sm text-gray-400 italic mb-2">No data</div>
+                                <div>
+                                    {% if data.metric.is_calculated %}
+                                        <button onclick="event.stopPropagation(); showFormulaInfo('{{ data.metric.name }}', '{{ data.metric.calculation_formula|default:"" }}')" 
+                                                class="p-1 rounded-full hover:bg-blue-100 transition-colors duration-200"
+                                                title="View formula information">
+                                            <span class="material-icons text-blue-600 text-sm">help</span>
+                                        </button>
+                                    {% else %}
+                                        <button onclick="event.stopPropagation(); addMeasurement('{{ data.metric.name }}', '{{ data.metric.type }}', '{{ data.metric.unit }}', {{ data.metric.is_calculated|yesno:'true,false' }}, '{{ data.metric.calculation_formula|default:"" }}')" 
+                                                class="p-1 rounded-full hover:bg-green-100 transition-colors duration-200"
+                                                title="Add measurement">
+                                            <span class="material-icons text-green-600 text-sm">add_circle</span>
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </td>
+                        
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            {% if data.target_value %}
+                                <div class="text-sm font-medium text-blue-600">{{ data.target_value }}</div>
+                                <div class="mt-2">
+                                    <button onclick="event.stopPropagation(); editTarget('{{ data.metric.name }}', '{{ data.metric.type }}', '{{ data.metric.unit }}', {{ data.target_value }})" 
+                                            class="p-1 rounded-full hover:bg-blue-100 transition-colors duration-200"
+                                            title="Edit target">
+                                        <span class="material-icons text-blue-600 text-sm">edit</span>
+                                    </button>
+                                </div>
+                            {% else %}
+                                <div class="text-sm text-gray-400 italic mb-2">No target</div>
+                                <div>
+                                    <button onclick="event.stopPropagation(); setTarget('{{ data.metric.name }}', '{{ data.metric.type }}', '{{ data.metric.unit }}')" 
+                                            class="p-1 rounded-full hover:bg-blue-100 transition-colors duration-200"
+                                            title="Set target">
+                                        <span class="material-icons text-blue-600 text-sm">add_circle</span>
+                                    </button>
+                                </div>
+                            {% endif %}
+                        </td>
+                        
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <button onclick="event.stopPropagation(); toggleFavorite({{ data.metric.id }}, this)" 
+                                    class="p-2 rounded-full hover:bg-red-100 transition-colors duration-200"
+                                    title="Stop tracking this metric">
+                                <span class="material-icons text-red-600 text-lg">visibility_off</span>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Quick Actions -->
+    <div class="bg-white rounded-lg shadow mb-6">
+        <div class="p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                <span class="material-icons text-lg mr-2">flash_on</span>
+                Quick Actions
+            </h3>
+            <div class="flex flex-wrap gap-3">
+                <a href="{% url 'metrics:calculator_form' %}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">
+                    <span class="material-icons text-lg mr-2">calculate</span>
+                    Calculate Health Metrics
+                </a>
+                <a href="{% url 'metrics:metric_values' %}" class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700">
+                    <span class="material-icons text-lg mr-2">add</span>
+                    Add New Measurement
+                </a>
+                <a href="{% url 'metrics:custom_metrics' %}" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700">
+                    <span class="material-icons text-lg mr-2">settings</span>
+                    Create Custom Metric
+                </a>
+                <a href="{% url 'metrics:activity_log' %}" class="inline-flex items-center px-4 py-2 bg-yellow-600 text-white text-sm font-medium rounded-md hover:bg-yellow-700">
+                    <span class="material-icons text-lg mr-2">fitness_center</span>
+                    Log Activity
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Filter -->
+    <div class="bg-white rounded-lg shadow mb-6">
+        <div class="p-4">
+            <h4 class="text-sm font-medium text-gray-900 mb-3 flex items-center">
+                <span class="material-icons text-lg mr-2">filter_list</span>
+                Filter by Category
+            </h4>
+            <div class="flex flex-wrap gap-2">
+                <button class="filter-btn active px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 bg-blue-600 text-white" data-category="all">All Metrics</button>
+                <button class="filter-btn px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 text-gray-600 hover:text-gray-900" data-category="body_measurement">Body Measurements</button>
+                <button class="filter-btn px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 text-gray-600 hover:text-gray-900" data-category="lab_result">Lab Results</button>
+                <button class="filter-btn px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 text-gray-600 hover:text-gray-900" data-category="vital_sign">Vital Signs</button>
+                <button class="filter-btn px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 text-gray-600 hover:text-gray-900" data-category="fitness">Fitness</button>
+                <button class="filter-btn px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 text-gray-600 hover:text-gray-900" data-category="nutrition">Nutrition</button>
+                <button class="filter-btn px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 text-gray-600 hover:text-gray-900" data-category="calculated">Calculated</button>
+                <button class="filter-btn px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 text-gray-600 hover:text-gray-900" data-category="custom">Custom</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- All Metrics Table -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <!-- Table Header -->
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-xl font-semibold text-gray-900 flex items-center">
+                <span class="material-icons text-lg mr-2">table_chart</span>
+                All Health Metrics
+            </h2>
+            <p class="text-sm text-gray-600 mt-1">Click the eye icon to start tracking a metric</p>
+        </div>
+        
+        <!-- Table -->
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Metric</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Previous (Week Ago)</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Current</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Target</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for data in metrics_data %}
+                    {% if data.metric.id not in favorite_metric_ids %}
+                    <tr class="metric-row hover:bg-gray-50 transition-colors duration-200" 
+                        data-category="{{ data.metric.type }}">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex-1 min-w-0">
+                                <div class="text-sm font-medium text-gray-900">
+                                    {{ data.metric.name }}
+                                    {% if data.metric.is_calculated %}
+                                        <span class="material-icons text-blue-600 text-xs ml-1" title="Calculated metric">calculate</span>
+                                    {% endif %}
+                                </div>
+                                <div class="text-xs text-gray-500 uppercase tracking-wide">{{ data.metric.type_display }}</div>
+                                <div class="text-xs text-gray-400">{{ data.metric.unit }}</div>
+                                {% if data.metric.metric_id %}
+                                <div class="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded mt-1 inline-block">ID: {{ data.metric.metric_id }}</div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            {% if data.previous_value %}
+                                <div class="text-sm text-gray-700">{{ data.previous_value }}</div>
+                            {% else %}
+                                <div class="text-sm text-gray-400 italic">No data</div>
+                            {% endif %}
+                        </td>
+                        
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            {% if data.current_value %}
+                                <div class="text-lg font-semibold {% if data.metric.is_calculated %}text-purple-600{% else %}text-green-600{% endif %}">
+                                    {{ data.current_value }}
+                                    {% if data.metric.is_calculated %}
+                                        <span class="material-icons text-xs ml-1" title="Calculated value">calculate</span>
+                                    {% endif %}
+                                </div>
+                                {% if data.current_timestamp %}
+                                    <div class="text-xs text-gray-500">{{ data.current_timestamp|date:"M d" }}</div>
+                                {% endif %}
+                                {% if data.previous_value and data.current_value != data.previous_value %}
+                                    {% if data.current_value > data.previous_value %}
+                                        <div class="text-xs text-green-600 flex items-center justify-center mt-1">
+                                            <span class="material-icons text-sm mr-1">trending_up</span>
+                                            +{{ data.current_value|add:data.previous_value|floatformat:1 }}
+                                        </div>
+                                    {% else %}
+                                        <div class="text-xs text-red-600 flex items-center justify-center mt-1">
+                                            <span class="material-icons text-sm mr-1">trending_down</span>
+                                            {{ data.current_value|add:data.previous_value|floatformat:1 }}
+                                        </div>
+                                    {% endif %}
+                                {% endif %}
+                                <div class="mt-2">
+                                    {% if data.metric.is_calculated %}
+                                        <button onclick="event.stopPropagation(); showFormulaInfo('{{ data.metric.name }}', '{{ data.metric.calculation_formula|default:"" }}')" 
+                                                class="p-1 rounded-full hover:bg-blue-100 transition-colors duration-200"
+                                                title="View formula information">
+                                            <span class="material-icons text-blue-600 text-sm">help</span>
+                                        </button>
+                                    {% else %}
+                                        <button onclick="event.stopPropagation(); editMeasurement('{{ data.metric.name }}', '{{ data.metric.type }}', '{{ data.metric.unit }}', {{ data.current_value }}, {{ data.metric.is_calculated|yesno:'true,false' }}, '{{ data.metric.calculation_formula|default:"" }}')" 
+                                                class="p-1 rounded-full hover:bg-blue-100 transition-colors duration-200"
+                                                title="Edit measurement">
+                                            <span class="material-icons text-blue-600 text-sm">edit</span>
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <div class="text-sm text-gray-400 italic mb-2">No data</div>
+                                <div>
+                                    {% if data.metric.is_calculated %}
+                                        <button onclick="event.stopPropagation(); showFormulaInfo('{{ data.metric.name }}', '{{ data.metric.calculation_formula|default:"" }}')" 
+                                                class="p-1 rounded-full hover:bg-blue-100 transition-colors duration-200"
+                                                title="View formula information">
+                                            <span class="material-icons text-blue-600 text-sm">help</span>
+                                        </button>
+                                    {% else %}
+                                        <button onclick="event.stopPropagation(); addMeasurement('{{ data.metric.name }}', '{{ data.metric.type }}', '{{ data.metric.unit }}', {{ data.metric.is_calculated|yesno:'true,false' }}, '{{ data.metric.calculation_formula|default:"" }}')" 
+                                                class="p-1 rounded-full hover:bg-green-100 transition-colors duration-200"
+                                                title="Add measurement">
+                                            <span class="material-icons text-green-600 text-sm">add_circle</span>
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </td>
+                        
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            {% if data.target_value %}
+                                <div class="text-sm font-medium text-blue-600">{{ data.target_value }}</div>
+                                <div class="mt-2">
+                                    <button onclick="event.stopPropagation(); editTarget('{{ data.metric.name }}', '{{ data.metric.type }}', '{{ data.metric.unit }}', {{ data.target_value }})" 
+                                            class="p-1 rounded-full hover:bg-blue-100 transition-colors duration-200"
+                                            title="Edit target">
+                                        <span class="material-icons text-blue-600 text-sm">edit</span>
+                                    </button>
+                                </div>
+                            {% else %}
+                                <div class="text-sm text-gray-400 italic mb-2">No target</div>
+                                <div>
+                                    <button onclick="event.stopPropagation(); setTarget('{{ data.metric.name }}', '{{ data.metric.type }}', '{{ data.metric.unit }}')" 
+                                            class="p-1 rounded-full hover:bg-blue-100 transition-colors duration-200"
+                                            title="Set target">
+                                        <span class="material-icons text-blue-600 text-sm">add_circle</span>
+                                    </button>
+                                </div>
+                            {% endif %}
+                        </td>
+                        
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <button onclick="event.stopPropagation(); toggleFavorite({{ data.metric.id }}, this)" 
+                                    class="p-2 rounded-full hover:bg-green-100 transition-colors duration-200"
+                                    title="Start tracking this metric">
+                                <span class="material-icons text-gray-400 hover:text-green-600 text-lg">visibility</span>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add Measurement Modal -->
+<div id="addMeasurementModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-medium text-gray-900" id="modalTitle">Add Measurement</h3>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+            </div>
+            <form id="measurementForm" method="post" action="{% url 'metrics:metric_values' %}">
+                {% csrf_token %}
+                <input type="hidden" id="metricName" name="metric_name">
+                <input type="hidden" id="metricType" name="metric_type">
+                <input type="hidden" id="metricUnit" name="metric_unit">
+                <input type="hidden" id="measurementType" name="measurement_type" value="log">
+                <input type="hidden" id="isCalculated" name="is_calculated" value="false">
+                <input type="hidden" id="calculationFormula" name="calculation_formula" value="">
+                
+                <div class="p-6 space-y-4">
+                    <div id="valueInputSection">
+                        <label for="value" class="block text-sm font-medium text-gray-700">Value</label>
+                        <input type="number" id="value" name="value" step="0.1" required
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div id="formulaSection" class="hidden">
+                        <label class="block text-sm font-medium text-gray-700">Formula</label>
+                        <div class="mt-1 p-3 bg-gray-50 border border-gray-200 rounded-md">
+                            <code id="formulaDisplay" class="text-sm text-gray-800"></code>
+                        </div>
+                        <p class="mt-2 text-xs text-gray-600">This is a calculated metric. The value will be computed automatically based on other measurements.</p>
+                    </div>
+                    <div id="formInputs">
+                        <div>
+                            <label for="source" class="block text-sm font-medium text-gray-700">Source (optional)</label>
+                            <input type="text" id="source" name="source" 
+                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="e.g., Home Scale, Lab Corp">
+                        </div>
+                        <div>
+                            <label for="notes" class="block text-sm font-medium text-gray-700">Notes (optional)</label>
+                            <textarea id="notes" name="notes" rows="2"
+                                      class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></textarea>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
+                    <button type="button" onclick="closeModal()" 
+                            class="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button type="submit" id="saveButton"
+                            class="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                        Save Measurement
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Set Target Modal -->
+<div id="setTargetModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-medium text-gray-900">Set Target</h3>
+                    <button onclick="closeTargetModal()" class="text-gray-400 hover:text-gray-600">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+            </div>
+            <form id="targetForm" method="post" action="{% url 'metrics:metric_values' %}">
+                {% csrf_token %}
+                <input type="hidden" id="targetMetricName" name="metric_name">
+                <input type="hidden" id="targetMetricType" name="metric_type">
+                <input type="hidden" id="targetMetricUnit" name="metric_unit">
+                <input type="hidden" id="targetMeasurementType" name="measurement_type" value="target">
+                
+                <div class="p-6 space-y-4">
+                    <div>
+                        <label for="targetValue" class="block text-sm font-medium text-gray-700">Target Value</label>
+                        <input type="number" id="targetValue" name="value" step="0.1" required
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="targetNotes" class="block text-sm font-medium text-gray-700">Notes (optional)</label>
+                        <textarea id="targetNotes" name="notes" rows="2"
+                                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                  placeholder="Why this target?"></textarea>
+                    </div>
+                </div>
+                
+                <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
+                    <button type="button" onclick="closeTargetModal()" 
+                            class="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                            class="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
+                        Set Target
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Category filtering
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const category = this.dataset.category;
+        
+        // Update active button
+        document.querySelectorAll('.filter-btn').forEach(b => {
+            b.classList.remove('active', 'bg-blue-600', 'text-white');
+            b.classList.add('text-gray-600', 'hover:text-gray-900');
+        });
+        this.classList.add('active', 'bg-blue-600', 'text-white');
+        this.classList.remove('text-gray-600', 'hover:text-gray-900');
+        
+        // Filter table rows
+        document.querySelectorAll('.metric-row').forEach(row => {
+            if (category === 'all' || row.dataset.category === category) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+});
+
+// Toggle favorite function
+function toggleFavorite(metricId, button) {
+    fetch('{% url "metrics:toggle_favorite" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({ metric_id: metricId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Reload the page to update the layout
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while toggling favorite.');
+    });
+}
+
+// Add measurement function
+function addMeasurement(metricName, metricType, metricUnit, isCalculated = false, formula = '') {
+    document.getElementById('modalTitle').textContent = `Add ${metricName} Measurement`;
+    document.getElementById('metricName').value = metricName;
+    document.getElementById('metricType').value = metricType;
+    document.getElementById('metricUnit').value = metricUnit;
+    document.getElementById('measurementType').value = 'log';
+    document.getElementById('isCalculated').value = isCalculated;
+    document.getElementById('calculationFormula').value = formula;
+    
+    // Show/hide appropriate sections based on whether it's calculated
+    if (isCalculated) {
+        document.getElementById('valueInputSection').classList.add('hidden');
+        document.getElementById('formulaSection').classList.remove('hidden');
+        document.getElementById('formInputs').classList.add('hidden');
+        document.getElementById('saveButton').classList.add('hidden');
+        document.getElementById('formulaDisplay').textContent = formula;
+        document.getElementById('value').value = '0'; // Set a default value for calculated metrics
+    } else {
+        document.getElementById('valueInputSection').classList.remove('hidden');
+        document.getElementById('formulaSection').classList.add('hidden');
+        document.getElementById('formInputs').classList.remove('hidden');
+        document.getElementById('saveButton').classList.remove('hidden');
+        document.getElementById('value').value = '';
+    }
+    
+    // Clear form
+    document.getElementById('source').value = '';
+    document.getElementById('notes').value = '';
+    
+    // Show modal
+    document.getElementById('addMeasurementModal').classList.remove('hidden');
+}
+
+// Edit measurement function
+function editMeasurement(metricName, metricType, metricUnit, currentValue, isCalculated = false, formula = '') {
+    document.getElementById('modalTitle').textContent = `Edit ${metricName} Measurement`;
+    document.getElementById('metricName').value = metricName;
+    document.getElementById('metricType').value = metricType;
+    document.getElementById('metricUnit').value = metricUnit;
+    document.getElementById('measurementType').value = 'log';
+    document.getElementById('isCalculated').value = isCalculated;
+    document.getElementById('calculationFormula').value = formula;
+    
+    // Show/hide appropriate sections based on whether it's calculated
+    if (isCalculated) {
+        document.getElementById('valueInputSection').classList.add('hidden');
+        document.getElementById('formulaSection').classList.remove('hidden');
+        document.getElementById('formInputs').classList.add('hidden');
+        document.getElementById('saveButton').classList.add('hidden');
+        document.getElementById('formulaDisplay').textContent = formula;
+        document.getElementById('value').value = currentValue || '0';
+    } else {
+        document.getElementById('valueInputSection').classList.remove('hidden');
+        document.getElementById('formulaSection').classList.add('hidden');
+        document.getElementById('formInputs').classList.remove('hidden');
+        document.getElementById('saveButton').classList.remove('hidden');
+        document.getElementById('value').value = currentValue || '';
+    }
+    
+    document.getElementById('source').value = '';
+    document.getElementById('notes').value = '';
+    
+    // Show modal
+    document.getElementById('addMeasurementModal').classList.remove('hidden');
+}
+
+// Show formula information function
+function showFormulaInfo(metricName, formula) {
+    document.getElementById('modalTitle').textContent = `${metricName} Formula Information`;
+    document.getElementById('metricName').value = metricName;
+    document.getElementById('metricType').value = 'calculated';
+    document.getElementById('metricUnit').value = '';
+    document.getElementById('measurementType').value = 'log';
+    document.getElementById('isCalculated').value = 'true';
+    document.getElementById('calculationFormula').value = formula;
+    
+    // Show only formula section, hide everything else
+    document.getElementById('valueInputSection').classList.add('hidden');
+    document.getElementById('formulaSection').classList.remove('hidden');
+    document.getElementById('formInputs').classList.add('hidden');
+    document.getElementById('saveButton').classList.add('hidden');
+    document.getElementById('formulaDisplay').textContent = formula;
+    
+    // Clear form
+    document.getElementById('source').value = '';
+    document.getElementById('notes').value = '';
+    
+    // Show modal
+    document.getElementById('addMeasurementModal').classList.remove('hidden');
+}
+
+// Edit target function
+function editTarget(metricName, metricType, metricUnit, currentTarget) {
+    document.getElementById('targetMetricName').value = metricName;
+    document.getElementById('targetMetricType').value = metricType;
+    document.getElementById('targetMetricUnit').value = metricUnit;
+    
+    // Pre-fill current target value
+    document.getElementById('targetValue').value = currentTarget;
+    document.getElementById('targetNotes').value = '';
+    
+    // Show modal
+    document.getElementById('setTargetModal').classList.remove('hidden');
+}
+
+// Set target function
+function setTarget(metricName, metricType, metricUnit) {
+    document.getElementById('targetMetricName').value = metricName;
+    document.getElementById('targetMetricType').value = metricType;
+    document.getElementById('targetMetricUnit').value = metricUnit;
+    
+    // Clear form
+    document.getElementById('targetValue').value = '';
+    document.getElementById('targetNotes').value = '';
+    
+    // Show modal
+    document.getElementById('setTargetModal').classList.remove('hidden');
+}
+
+// Close modals
+function closeModal() {
+    document.getElementById('addMeasurementModal').classList.add('hidden');
+    document.getElementById('measurementForm').reset();
+}
+
+function closeTargetModal() {
+    document.getElementById('setTargetModal').classList.add('hidden');
+    document.getElementById('targetForm').reset();
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const addModal = document.getElementById('addMeasurementModal');
+    const targetModal = document.getElementById('setTargetModal');
+    if (event.target == addModal) {
+        closeModal();
+    }
+    if (event.target == targetModal) {
+        closeTargetModal();
+    }
+}
+
+// Handle form submissions
+document.getElementById('measurementForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch('{% url "metrics:metric_values" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeModal();
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while saving the measurement.');
+    });
+});
+
+document.getElementById('targetForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch('{% url "metrics:metric_values" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeTargetModal();
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while setting the target.');
+    });
+});
+</script>
+{% endblock %}
