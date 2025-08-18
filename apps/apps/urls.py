@@ -31,6 +31,8 @@ urlpatterns = [
     path("goals/", include("goals.urls")),
     path("agents/", include("agents.urls")),
     path("metrics/", include("metrics.urls")),
+    path("activities/", include("activities.urls")),
+    path("planner/", include("planner.urls")),
     # path("bots/", include("bots.urls")),
 ]
 

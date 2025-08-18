@@ -205,12 +205,34 @@ class HealthCalculator(models.Model):
     
     def get_age(self) -> Optional[int]:
         """Calculate age from user's date of birth"""
-        if hasattr(self.user, 'profile') and self.user.profile.date_of_birth:
+        try:
+            # Check if user has a profile
+            if not hasattr(self.user, 'profile'):
+                print(f"User {self.user.username} has no profile")
+                return None
+            
+            # Check if profile has date of birth
+            if not self.user.profile.date_of_birth:
+                print(f"User {self.user.username} has no date of birth set")
+                return None
+            
+            # Calculate age
             today = date.today()
-            return today.year - self.user.profile.date_of_birth.year - (
+            age = today.year - self.user.profile.date_of_birth.year - (
                 (today.month, today.day) < (self.user.profile.date_of_birth.month, self.user.profile.date_of_birth.day)
             )
-        return None
+            
+            # Validate age is reasonable
+            if age < 0 or age > 120:
+                print(f"User {self.user.username} has invalid age: {age}")
+                return None
+            
+            print(f"User {self.user.username} age calculated: {age}")
+            return age
+            
+        except Exception as e:
+            print(f"Error calculating age for user {self.user.username}: {e}")
+            return None
     
     def calculate_and_store_metrics(self) -> Dict[str, Any]:
         """
@@ -257,8 +279,19 @@ class HealthCalculator(models.Model):
             self._store_calculated_metric('Total Daily Energy Expenditure', tdee_kcal, calculation_inputs)
             results['tdee_kcal'] = tdee_kcal
         else:
-            results['bmr_kcal'] = None
-            results['tdee_kcal'] = None
+            # Use default age of 30 if no age is provided (common average)
+            default_age = 30
+            bmr_kcal = HealthCalculatorService.calculate_bmr(self.weight_kg, self.height_cm, default_age, self.gender)
+            self._store_calculated_metric('Basal Metabolic Rate', bmr_kcal, calculation_inputs)
+            results['bmr_kcal'] = bmr_kcal
+            
+            # Calculate and store TDEE
+            tdee_kcal = HealthCalculatorService.calculate_tdee(bmr_kcal, self.activity_level)
+            self._store_calculated_metric('Total Daily Energy Expenditure', tdee_kcal, calculation_inputs)
+            results['tdee_kcal'] = tdee_kcal
+            
+            # Add note about default age
+            calculation_inputs['note'] = f"BMR calculated using default age of {default_age} years. Please update your date of birth in your profile for more accurate results."
         
         return results
     
@@ -367,71 +400,7 @@ class HealthCalculator(models.Model):
         }
 
 
-class ActivityLog(models.Model):
-    """Physical activity and exercise tracking"""
-    ACTIVITY_TYPES = [
-        ('strength_training', 'Strength Training'),
-        ('cardio', 'Cardio'),
-        ('flexibility', 'Flexibility'),
-        ('sports', 'Sports'),
-        ('walking', 'Walking'),
-        ('running', 'Running'),
-        ('cycling', 'Cycling'),
-        ('swimming', 'Swimming'),
-        ('yoga', 'Yoga'),
-        ('pilates', 'Pilates'),
-        ('other', 'Other'),
-    ]
-    
-    INTENSITY_LEVELS = [
-        ('low', 'Low'),
-        ('moderate', 'Moderate'),
-        ('high', 'High'),
-        ('very_high', 'Very High'),
-    ]
-    
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='metrics_activitylogs')
-    activity_type = models.CharField(max_length=20, choices=ACTIVITY_TYPES)
-    intensity = models.CharField(max_length=20, choices=INTENSITY_LEVELS, default='moderate')
-    duration_minutes = models.IntegerField(help_text="Duration in minutes")
-    calories_burned = models.FloatField(null=True, blank=True, help_text="Estimated calories burned")
-    distance_km = models.FloatField(null=True, blank=True, help_text="Distance in kilometers")
-    notes = models.TextField(blank=True)
-    activity_date = models.DateField(default=timezone.now)
-    start_time = models.TimeField(null=True, blank=True)
-    end_time = models.TimeField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
-    class Meta:
-        ordering = ['-activity_date', '-start_time']
-        indexes = [
-            models.Index(fields=['user', 'activity_date']),
-            models.Index(fields=['user', 'activity_type']),
-        ]
-
-    def __str__(self):
-        return f"{self.user.username} - {self.get_activity_type_display()} - {self.activity_date}"
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for API responses"""
-        return {
-            'id': str(self.id),
-            'user_id': self.user.id,
-            'activity_type': self.activity_type,
-            'activity_type_display': self.get_activity_type_display(),
-            'intensity': self.intensity,
-            'intensity_display': self.get_intensity_display(),
-            'duration_minutes': self.duration_minutes,
-            'calories_burned': self.calories_burned,
-            'distance_km': self.distance_km,
-            'notes': self.notes,
-            'activity_date': self.activity_date.isoformat(),
-            'start_time': self.start_time.isoformat() if self.start_time else None,
-            'end_time': self.end_time.isoformat() if self.end_time else None,
-            'created_at': self.created_at.isoformat(),
-        }
 
 
 class UserMetricFavorite(models.Model):

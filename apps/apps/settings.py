@@ -36,6 +36,8 @@ INSTALLED_APPS = [
     'meals.apps.MealsConfig',
     'bots.apps.BotsConfig',
     'agents.apps.AgentsConfig',
+    'activities.apps.ActivitiesConfig',
+    'planner.apps.PlannerConfig',
     'user_auth.apps.UserAuthConfig',
     'metrics.apps.MetricsConfig',
     'django.contrib.admin',

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import HealthCalculator, Metric, MetricValue, ActivityLog, UserMetricFavorite
+from .models import HealthCalculator, Metric, MetricValue, UserMetricFavorite
 
 @admin.register(HealthCalculator)
 class HealthCalculatorAdmin(admin.ModelAdmin):
@@ -78,28 +78,7 @@ class MetricValueAdmin(admin.ModelAdmin):
         }),
     )
 
-@admin.register(ActivityLog)
-class ActivityLogAdmin(admin.ModelAdmin):
-    list_display = ['user', 'activity_type', 'duration_minutes', 'calories_burned', 'activity_date']
-    list_filter = ['activity_type', 'activity_date', 'intensity']
-    search_fields = ['user__username', 'notes']
-    readonly_fields = ['created_at']
-    
-    fieldsets = (
-        ('User Information', {
-            'fields': ('user',)
-        }),
-        ('Activity Details', {
-            'fields': ('activity_type', 'duration_minutes', 'calories_burned', 'intensity')
-        }),
-        ('Additional Information', {
-            'fields': ('activity_date', 'notes')
-        }),
-        ('Timestamps', {
-            'fields': ('created_at',),
-            'classes': ('collapse',)
-        }),
-    )
+
 
 @admin.register(UserMetricFavorite)
 class UserMetricFavoriteAdmin(admin.ModelAdmin):

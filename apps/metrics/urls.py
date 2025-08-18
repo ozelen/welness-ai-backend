@@ -9,6 +9,6 @@ urlpatterns = [
     path('calculator/<uuid:calculator_id>/', views.calculator_result, name='calculator_result'),
     path('values/', views.metric_values, name='metric_values'),
     path('custom/', views.custom_metrics, name='custom_metrics'),
-    path('activity/', views.activity_log, name='activity_log'),
+    # Activity logging moved to `activities` app
     path('toggle-favorite/', views.toggle_favorite, name='toggle_favorite'),
 ]

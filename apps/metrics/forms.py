@@ -1,7 +1,7 @@
 from django import forms
 from django.utils import timezone
 from datetime import date
-from .models import HealthCalculator, Metric, MetricValue, ActivityLog
+from .models import HealthCalculator, Metric, MetricValue
 
 
 class HealthCalculatorForm(forms.ModelForm):
@@ -130,87 +130,7 @@ class MetricValueForm(forms.ModelForm):
         return value
 
 
-class ActivityLogForm(forms.ModelForm):
-    """Form for activity logging"""
-    
-    class Meta:
-        model = ActivityLog
-        fields = [
-            'activity_type', 
-            'intensity', 
-            'duration_minutes', 
-            'calories_burned',
-            'distance_km',
-            'activity_date',
-            'start_time',
-            'end_time',
-            'notes'
-        ]
-        widgets = {
-            'activity_type': forms.Select(attrs={
-                'class': 'form-control'
-            }),
-            'intensity': forms.Select(attrs={
-                'class': 'form-control'
-            }),
-            'duration_minutes': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Duration in minutes',
-                'min': '1',
-                'max': '480'
-            }),
-            'calories_burned': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Estimated calories burned',
-                'step': '0.1',
-                'min': '0'
-            }),
-            'distance_km': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Distance in kilometers',
-                'step': '0.01',
-                'min': '0'
-            }),
-            'activity_date': forms.DateInput(attrs={
-                'class': 'form-control',
-                'type': 'date'
-            }),
-            'start_time': forms.TimeInput(attrs={
-                'class': 'form-control',
-                'type': 'time'
-            }),
-            'end_time': forms.TimeInput(attrs={
-                'class': 'form-control',
-                'type': 'time'
-            }),
-            'notes': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 2,
-                'placeholder': 'Activity notes (optional)'
-            }),
-        }
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Set default date to today
-        if not self.instance.pk:
-            self.fields['activity_date'].initial = date.today()
-    
-    def clean_duration_minutes(self):
-        duration = self.cleaned_data.get('duration_minutes')
-        if duration and (duration < 1 or duration > 480):
-            raise forms.ValidationError('Duration must be between 1 and 480 minutes')
-        return duration
-    
-    def clean(self):
-        cleaned_data = super().clean()
-        start_time = cleaned_data.get('start_time')
-        end_time = cleaned_data.get('end_time')
-        
-        if start_time and end_time and start_time >= end_time:
-            raise forms.ValidationError('End time must be after start time')
-        
-        return cleaned_data
+
 
 
 class CustomMetricForm(forms.Form):

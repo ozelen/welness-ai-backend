@@ -9,9 +9,9 @@ from datetime import timedelta
 from django.db.models import Q
 import json
 
-from .models import HealthCalculator, Metric, MetricValue, ActivityLog
+from .models import HealthCalculator, Metric, MetricValue
 from .services import HealthCalculatorService, HealthMetricsService
-from .forms import HealthCalculatorForm, MetricValueForm, ActivityLogForm
+from .forms import HealthCalculatorForm, MetricValueForm
 
 
 @login_required
@@ -284,32 +284,7 @@ def metric_values(request):
     return render(request, 'metrics/metric_values.html', context)
 
 
-@login_required
-def activity_log(request):
-    """Manage activity logs"""
-    user = request.user
-    
-    if request.method == 'POST':
-        form = ActivityLogForm(request.POST)
-        if form.is_valid():
-            activity = form.save(commit=False)
-            activity.user = user
-            activity.save()
-            
-            messages.success(request, 'Activity logged successfully!')
-            return redirect('metrics:activity_log')
-    else:
-        form = ActivityLogForm()
-    
-    # Get activity history
-    activities = ActivityLog.objects.filter(user=user).order_by('-activity_date', '-start_time')
-    
-    context = {
-        'form': form,
-        'activities': activities,
-    }
-    
-    return render(request, 'metrics/activity_log.html', context)
+## Activity logging moved to the new `activities` app
 
 
 @login_required

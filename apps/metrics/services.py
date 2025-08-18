@@ -1,8 +1,9 @@
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
+from datetime import date
 from django.contrib.auth.models import User
 from django.utils import timezone
+from .models import Metric, MetricValue, HealthCalculator, UserMetricFavorite
 from datetime import date, timedelta
-from .models import HealthCalculator, Metric, MetricValue, ActivityLog, UserMetricFavorite
 from django.db import models
 
 
@@ -90,41 +91,7 @@ class HealthMetricsService:
             for value in values
         ]
     
-    @staticmethod
-    def get_activity_summary(user: User, days: int = 7) -> Dict[str, Any]:
-        """Get activity summary for the specified number of days"""
-        cutoff_date = timezone.now() - timedelta(days=days)
-        
-        activities = ActivityLog.objects.filter(
-            user=user,
-            activity_date__gte=cutoff_date.date()
-        )
-        
-        total_activities = activities.count()
-        total_duration_minutes = sum(activity.duration_minutes for activity in activities)
-        total_calories_burned = sum(activity.calories_burned or 0 for activity in activities)
-        
-        # Group by activity type
-        activity_types = {}
-        for activity in activities:
-            activity_type = activity.get_activity_type_display()
-            if activity_type not in activity_types:
-                activity_types[activity_type] = {
-                    'count': 0,
-                    'total_duration': 0,
-                    'total_calories': 0
-                }
-            activity_types[activity_type]['count'] += 1
-            activity_types[activity_type]['total_duration'] += activity.duration_minutes
-            activity_types[activity_type]['total_calories'] += activity.calories_burned or 0
-        
-        return {
-            'total_activities': total_activities,
-            'total_duration_minutes': total_duration_minutes,
-            'total_calories_burned': total_calories_burned,
-            'activity_types': activity_types,
-            'period_days': days
-        }
+
     
     @staticmethod
     def get_lab_results_summary(user: User, days: int = 365) -> Dict[str, Any]:
@@ -330,6 +297,7 @@ class HealthMetricsService:
             # Get the latest value for each metric
             for metric in metrics:
                 if metric.metric_id:
+                    # For regular metrics, get the latest measurement
                     latest_value = MetricValue.objects.filter(
                         user=user,
                         metric=metric,
@@ -339,7 +307,7 @@ class HealthMetricsService:
                     if latest_value:
                         metric_values[metric.metric_id] = float(latest_value.value)
             
-            # Add age and gender from user profile
+            # Add age and gender
             try:
                 from user_auth.models import UserProfile
                 user_profile = UserProfile.objects.get(user=user)
@@ -349,16 +317,48 @@ class HealthMetricsService:
                     age = today.year - user_profile.date_of_birth.year - ((today.month, today.day) < (user_profile.date_of_birth.month, user_profile.date_of_birth.day))
                     metric_values['AGE'] = age
                 
-                # Add gender for BMR calculation
+                # Add gender from user profile
                 if user_profile.gender:
                     metric_values['GENDER'] = user_profile.gender
+                else:
+                    # Default to male if no gender is set
+                    metric_values['GENDER'] = 'male'
+                
+                # Add activity multiplier for TDEE calculation
+                # Use ActivityService to calculate based on actual logged activities
+                from activities.services import ActivityService
+                activity_multiplier = ActivityService.calculate_daily_activity_multiplier(user, use_planned=False)
+                metric_values['ACTIVITY_MULTIPLIER'] = activity_multiplier
             except:
-                pass
+                # If any error occurs, set defaults
+                metric_values['GENDER'] = 'male'
             
             # Replace metric IDs with their values in the formula
             evaluated_formula = formula
             for metric_id, value in metric_values.items():
-                evaluated_formula = evaluated_formula.replace(metric_id, str(value))
+                if isinstance(value, str):
+                    # For string values like gender, keep the quotes
+                    evaluated_formula = evaluated_formula.replace(metric_id, f'"{value}"')
+                else:
+                    # For numeric values, convert to string
+                    evaluated_formula = evaluated_formula.replace(metric_id, str(value))
+            
+            # Handle special case where BMR is needed but not available
+            if 'BMR' in evaluated_formula and 'BMR' not in metric_values:
+                # Calculate BMR directly using the formula
+                bmr_formula = "10 * WEIGHT + 6.25 * HEIGHT - 5 * AGE + (5 if GENDER == \"male\" else -161)"
+                bmr_evaluated = bmr_formula
+                for metric_id, value in metric_values.items():
+                    if isinstance(value, str):
+                        bmr_evaluated = bmr_evaluated.replace(metric_id, f'"{value}"')
+                    else:
+                        bmr_evaluated = bmr_evaluated.replace(metric_id, str(value))
+                
+                try:
+                    bmr_value = eval(bmr_evaluated)
+                    evaluated_formula = evaluated_formula.replace('BMR', str(bmr_value))
+                except:
+                    return None
             
             # Handle special characters and convert to Python syntax
             evaluated_formula = evaluated_formula.replace('²', '**2')  # Convert ² to **2
@@ -460,3 +460,6 @@ class HealthCalculatorService:
         Formula: Body Fat Mass = Weight × (Body Fat % / 100)
         """
         return weight_kg * (body_fat_percentage / 100)
+
+
+

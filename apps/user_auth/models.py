@@ -8,9 +8,15 @@ import json
 
 class UserProfile(models.Model):
     """Extended user profile with basic user information"""
+    GENDER_CHOICES = [
+        ('male', 'Male'),
+        ('female', 'Female'),
+    ]
+    
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     phone_number = models.CharField(max_length=20, blank=True, null=True)
     date_of_birth = models.DateField(blank=True, null=True)
+    gender = models.CharField(max_length=10, choices=GENDER_CHOICES, blank=True, null=True)
     avatar = models.URLField(blank=True, null=True)
     bio = models.TextField(blank=True, null=True)
     timezone = models.CharField(max_length=50, default='UTC')
