@@ -12,360 +12,340 @@
                 <h1 class="text-3xl font-bold text-gray-900 mb-2">Health Metrics Dashboard</h1>
                 <p class="text-gray-600">Track your progress with current, previous, and target values</p>
             </div>
-            <div class="flex space-x-3">
-                <a href="{% url 'metrics:calculator_form' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                    <span class="material-icons text-lg mr-2">calculate</span>
-                    Health Calculator
-                </a>
-                <a href="{% url 'metrics:metric_values' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                    <span class="material-icons text-lg mr-2">add</span>
-                    Add Measurements
-                </a>
-            </div>
         </div>
     </div>
 
-    <!-- Tracked Metrics (Favorites) -->
-    {% if favorite_metrics %}
+    <!-- Tab Navigation with Integrated Filters -->
     <div class="bg-white rounded-lg shadow mb-6">
-        <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-xl font-semibold text-gray-900 flex items-center">
-                <span class="material-icons text-lg mr-2">star</span>
-                Tracked Metrics
-            </h2>
-            <p class="text-sm text-gray-600 mt-1">Your most important metrics - click the eye icon to stop tracking</p>
+        <div class="border-b border-gray-200">
+            <nav class="-mb-px flex space-x-8 px-6" aria-label="Tabs">
+                <button class="tab-btn active border-b-2 border-blue-500 py-4 px-1 text-sm font-medium text-blue-600" 
+                        data-tab="tracked">
+                    <span class="material-icons text-lg mr-2">star</span>
+                    Tracked Metrics
+                    <span class="ml-2 bg-blue-100 text-blue-600 py-0.5 px-2.5 rounded-full text-xs font-medium">{{ tracked_metrics_data|length }}</span>
+                </button>
+                <button class="tab-btn border-b-2 border-transparent py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300" 
+                        data-tab="all">
+                    <span class="material-icons text-lg mr-2">table_chart</span>
+                    All Metrics
+                    <span class="ml-2 bg-gray-100 text-gray-600 py-0.5 px-2.5 rounded-full text-xs font-medium">{{ all_metrics_data|length }}</span>
+                </button>
+            </nav>
         </div>
         
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-blue-50">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-blue-600 uppercase tracking-wider">Metric</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-blue-600 uppercase tracking-wider">Previous (Week Ago)</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-blue-600 uppercase tracking-wider">Current</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-blue-600 uppercase tracking-wider">Target</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-blue-600 uppercase tracking-wider">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    {% for data in metrics_data %}
-                    {% if data.metric.id in favorite_metric_ids %}
-                    <tr class="hover:bg-blue-50 transition-colors duration-200 tracked-metric-row" 
-                        data-category="{{ data.metric.type }}">
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex-1 min-w-0">
-                                <div class="text-sm font-medium text-gray-900">
-                                    {{ data.metric.name }}
-                                    {% if data.metric.is_calculated %}
-                                        <span class="material-icons text-blue-600 text-xs ml-1" title="Calculated metric">calculate</span>
-                                    {% endif %}
-                                </div>
-                                <div class="text-xs text-gray-500 uppercase tracking-wide">{{ data.metric.type_display }}</div>
-                                <div class="text-xs text-gray-400">{{ data.metric.unit }}</div>
-                                {% if data.metric.metric_id %}
-                                <div class="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded mt-1 inline-block">ID: {{ data.metric.metric_id }}</div>
-                                {% endif %}
-                            </div>
-                        </td>
-                        
-                        <td class="px-6 py-4 whitespace-nowrap text-center">
-                            {% if data.previous_value %}
-                                <div class="text-sm text-gray-700">{{ data.previous_value }}</div>
-                            {% else %}
-                                <div class="text-sm text-gray-400 italic">No data</div>
-                            {% endif %}
-                        </td>
-                        
-                        <td class="px-6 py-4 whitespace-nowrap text-center">
-                            {% if data.current_value %}
-                                <div class="text-lg font-semibold {% if data.metric.is_calculated %}text-purple-600{% else %}text-green-600{% endif %}">
-                                    {{ data.current_value }}
-                                    {% if data.metric.is_calculated %}
-                                        <span class="material-icons text-xs ml-1" title="Calculated value">calculate</span>
-                                    {% endif %}
-                                </div>
-                                {% if data.current_timestamp %}
-                                    <div class="text-xs text-gray-500">{{ data.current_timestamp|date:"M d" }}</div>
-                                {% endif %}
-                                {% if data.previous_value and data.current_value != data.previous_value %}
-                                    {% if data.current_value > data.previous_value %}
-                                        <div class="text-xs text-green-600 flex items-center justify-center mt-1">
-                                            <span class="material-icons text-sm mr-1">trending_up</span>
-                                            +{{ data.current_value|add:data.previous_value|floatformat:1 }}
-                                        </div>
-                                    {% else %}
-                                        <div class="text-xs text-red-600 flex items-center justify-center mt-1">
-                                            <span class="material-icons text-sm mr-1">trending_down</span>
-                                            {{ data.current_value|add:data.previous_value|floatformat:1 }}
-                                        </div>
-                                    {% endif %}
-                                {% endif %}
-                                <div class="mt-2">
-                                    {% if data.metric.is_calculated %}
-                                        <button onclick="event.stopPropagation(); showFormulaInfo('{{ data.metric.name }}', '{{ data.metric.calculation_formula|default:"" }}')" 
-                                                class="p-1 rounded-full hover:bg-blue-100 transition-colors duration-200"
-                                                title="View formula information">
-                                            <span class="material-icons text-blue-600 text-sm">help</span>
-                                        </button>
-                                    {% else %}
-                                        <button onclick="event.stopPropagation(); editMeasurement('{{ data.metric.name }}', '{{ data.metric.type }}', '{{ data.metric.unit }}', {{ data.current_value }}, {{ data.metric.is_calculated|yesno:'true,false' }}, '{{ data.metric.calculation_formula|default:"" }}')" 
-                                                class="p-1 rounded-full hover:bg-blue-100 transition-colors duration-200"
-                                                title="Edit measurement">
-                                            <span class="material-icons text-blue-600 text-sm">edit</span>
-                                        </button>
-                                    {% endif %}
-                                </div>
-                            {% else %}
-                                <div class="text-sm text-gray-400 italic mb-2">No data</div>
-                                <div>
-                                    {% if data.metric.is_calculated %}
-                                        <button onclick="event.stopPropagation(); showFormulaInfo('{{ data.metric.name }}', '{{ data.metric.calculation_formula|default:"" }}')" 
-                                                class="p-1 rounded-full hover:bg-blue-100 transition-colors duration-200"
-                                                title="View formula information">
-                                            <span class="material-icons text-blue-600 text-sm">help</span>
-                                        </button>
-                                    {% else %}
-                                        <button onclick="event.stopPropagation(); addMeasurement('{{ data.metric.name }}', '{{ data.metric.type }}', '{{ data.metric.unit }}', {{ data.metric.is_calculated|yesno:'true,false' }}, '{{ data.metric.calculation_formula|default:"" }}')" 
-                                                class="p-1 rounded-full hover:bg-green-100 transition-colors duration-200"
-                                                title="Add measurement">
-                                            <span class="material-icons text-green-600 text-sm">add_circle</span>
-                                        </button>
-                                    {% endif %}
-                                </div>
-                            {% endif %}
-                        </td>
-                        
-                        <td class="px-6 py-4 whitespace-nowrap text-center">
-                            {% if data.target_value %}
-                                <div class="text-sm font-medium text-blue-600">{{ data.target_value }}</div>
-                                <div class="mt-2">
-                                    <button onclick="event.stopPropagation(); editTarget('{{ data.metric.name }}', '{{ data.metric.type }}', '{{ data.metric.unit }}', {{ data.target_value }})" 
-                                            class="p-1 rounded-full hover:bg-blue-100 transition-colors duration-200"
-                                            title="Edit target">
-                                        <span class="material-icons text-blue-600 text-sm">edit</span>
-                                    </button>
-                                </div>
-                            {% else %}
-                                <div class="text-sm text-gray-400 italic mb-2">No target</div>
-                                <div>
-                                    <button onclick="event.stopPropagation(); setTarget('{{ data.metric.name }}', '{{ data.metric.type }}', '{{ data.metric.unit }}')" 
-                                            class="p-1 rounded-full hover:bg-blue-100 transition-colors duration-200"
-                                            title="Set target">
-                                        <span class="material-icons text-blue-600 text-sm">add_circle</span>
-                                    </button>
-                                </div>
-                            {% endif %}
-                        </td>
-                        
-                        <td class="px-6 py-4 whitespace-nowrap text-center">
-                            <button onclick="event.stopPropagation(); toggleFavorite({{ data.metric.id }}, this)" 
-                                    class="p-2 rounded-full hover:bg-red-100 transition-colors duration-200"
-                                    title="Stop tracking this metric">
-                                <span class="material-icons text-red-600 text-lg">visibility_off</span>
-                            </button>
-                        </td>
-                    </tr>
-                    {% endif %}
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Quick Actions -->
-    <div class="bg-white rounded-lg shadow mb-6">
-        <div class="p-6">
-            <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                <span class="material-icons text-lg mr-2">flash_on</span>
-                Quick Actions
-            </h3>
-            <div class="flex flex-wrap gap-3">
-                <a href="{% url 'metrics:calculator_form' %}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">
-                    <span class="material-icons text-lg mr-2">calculate</span>
-                    Calculate Health Metrics
-                </a>
-                <a href="{% url 'metrics:metric_values' %}" class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700">
-                    <span class="material-icons text-lg mr-2">add</span>
-                    Add New Measurement
-                </a>
-                <a href="{% url 'metrics:custom_metrics' %}" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700">
-                    <span class="material-icons text-lg mr-2">settings</span>
-                    Create Custom Metric
-                </a>
-                <a href="{% url 'activities:calendar' %}" class="inline-flex items-center px-4 py-2 bg-yellow-600 text-white text-sm font-medium rounded-md hover:bg-yellow-700">
-                    <span class="material-icons text-lg mr-2">fitness_center</span>
-                    Log Activity
-                </a>
+        <!-- Integrated Category Filters -->
+        <div class="px-6 py-4">
+            <div class="flex items-center justify-between">
+                <h4 class="text-sm font-medium text-gray-900 flex items-center">
+                    <span class="material-icons text-lg mr-2">filter_list</span>
+                    Filter by Category
+                </h4>
+                <div class="flex flex-wrap gap-2">
+                    <button class="filter-btn active px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 bg-blue-600 text-white" data-category="all">All Categories</button>
+                    <button class="filter-btn px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 text-gray-600 hover:text-gray-900" data-category="body_measurement">Body Measurements</button>
+                    <button class="filter-btn px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 text-gray-600 hover:text-gray-900" data-category="lab_result">Lab Results</button>
+                    <button class="filter-btn px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 text-gray-600 hover:text-gray-900" data-category="vital_sign">Vital Signs</button>
+                    <button class="filter-btn px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 text-gray-600 hover:text-gray-900" data-category="fitness">Fitness</button>
+                    <button class="filter-btn px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 text-gray-600 hover:text-gray-900" data-category="nutrition">Nutrition</button>
+                    <button class="filter-btn px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 text-gray-600 hover:text-gray-900" data-category="calculated">Calculated</button>
+                    <button class="filter-btn px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 text-gray-600 hover:text-gray-900" data-category="custom">Custom</button>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Category Filter -->
-    <div class="bg-white rounded-lg shadow mb-6">
-        <div class="p-4">
-            <h4 class="text-sm font-medium text-gray-900 mb-3 flex items-center">
-                <span class="material-icons text-lg mr-2">filter_list</span>
-                Filter by Category
-            </h4>
-            <div class="flex flex-wrap gap-2">
-                <button class="filter-btn active px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 bg-blue-600 text-white" data-category="all">All Metrics</button>
-                <button class="filter-btn px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 text-gray-600 hover:text-gray-900" data-category="body_measurement">Body Measurements</button>
-                <button class="filter-btn px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 text-gray-600 hover:text-gray-900" data-category="lab_result">Lab Results</button>
-                <button class="filter-btn px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 text-gray-600 hover:text-gray-900" data-category="vital_sign">Vital Signs</button>
-                <button class="filter-btn px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 text-gray-600 hover:text-gray-900" data-category="fitness">Fitness</button>
-                <button class="filter-btn px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 text-gray-600 hover:text-gray-900" data-category="nutrition">Nutrition</button>
-                <button class="filter-btn px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 text-gray-600 hover:text-gray-900" data-category="calculated">Calculated</button>
-                <button class="filter-btn px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 text-gray-600 hover:text-gray-900" data-category="custom">Custom</button>
+    <!-- Tracked Metrics Tab -->
+    <div id="tracked-tab" class="tab-content">
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-xl font-semibold text-gray-900 flex items-center">
+                    <span class="material-icons text-lg mr-2">star</span>
+                    Tracked Metrics
+                </h2>
+                <p class="text-sm text-gray-600 mt-1">Your most important metrics - click the eye icon to stop tracking</p>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-blue-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-blue-600 uppercase tracking-wider">Metric</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-blue-600 uppercase tracking-wider">Previous (Week Ago)</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-blue-600 uppercase tracking-wider">Current</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-blue-600 uppercase tracking-wider">Target</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-blue-600 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for data in tracked_metrics_data %}
+                        <tr class="hover:bg-blue-50 transition-colors duration-200 tracked-metric-row" 
+                            data-category="{{ data.metric.type }}" data-metric-id="{{ data.metric.id }}">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex-1 min-w-0">
+                                    <div class="text-sm font-medium text-gray-900">
+                                        {{ data.metric.name }}
+                                        {% if data.metric.is_calculated %}
+                                            <span class="material-icons text-blue-600 text-xs ml-1" title="Calculated metric">calculate</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="text-xs text-gray-500 uppercase tracking-wide">{{ data.metric.type_display }}</div>
+                                    <div class="text-xs text-gray-400">{{ data.metric.unit }}</div>
+                                    {% if data.metric.metric_id %}
+                                    <div class="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded mt-1 inline-block">ID: {{ data.metric.metric_id }}</div>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                {% if data.previous_value %}
+                                    <div class="text-sm text-gray-700">{{ data.previous_value }}</div>
+                                {% else %}
+                                    <div class="text-sm text-gray-400 italic">No data</div>
+                                {% endif %}
+                            </td>
+                            
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                {% if data.current_value %}
+                                    <div class="text-lg font-semibold {% if data.metric.is_calculated %}text-purple-600{% else %}text-green-600{% endif %}">
+                                        {{ data.current_value }}
+                                        {% if data.metric.is_calculated %}
+                                            <span class="material-icons text-xs ml-1" title="Calculated value">calculate</span>
+                                        {% endif %}
+                                    </div>
+                                    {% if data.current_timestamp %}
+                                        <div class="text-xs text-gray-500">{{ data.current_timestamp|date:"M d" }}</div>
+                                    {% endif %}
+                                    {% if data.previous_value and data.current_value != data.previous_value %}
+                                        {% if data.current_value > data.previous_value %}
+                                            <div class="text-xs text-green-600 flex items-center justify-center mt-1">
+                                                <span class="material-icons text-sm mr-1">trending_up</span>
+                                                +{{ data.current_value|add:data.previous_value|floatformat:1 }}
+                                            </div>
+                                        {% else %}
+                                            <div class="text-xs text-red-600 flex items-center justify-center mt-1">
+                                                <span class="material-icons text-sm mr-1">trending_down</span>
+                                                {{ data.current_value|add:data.previous_value|floatformat:1 }}
+                                            </div>
+                                        {% endif %}
+                                    {% endif %}
+                                    <div class="mt-2">
+                                        {% if data.metric.is_calculated %}
+                                            <button onclick="event.stopPropagation(); showFormulaInfo('{{ data.metric.name }}', '{{ data.metric.calculation_formula|default:"" }}')" 
+                                                    class="p-1 rounded-full hover:bg-blue-100 transition-colors duration-200"
+                                                    title="View formula information">
+                                                <span class="material-icons text-blue-600 text-sm">help</span>
+                                            </button>
+                                        {% else %}
+                                            <button onclick="event.stopPropagation(); editMeasurement('{{ data.metric.name }}', '{{ data.metric.type }}', '{{ data.metric.unit }}', {{ data.current_value }}, {{ data.metric.is_calculated|yesno:'true,false' }}, '{{ data.metric.calculation_formula|default:"" }}')" 
+                                                    class="p-1 rounded-full hover:bg-blue-100 transition-colors duration-200"
+                                                    title="Edit measurement">
+                                                <span class="material-icons text-blue-600 text-sm">edit</span>
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                {% else %}
+                                    <div class="text-sm text-gray-400 italic mb-2">No data</div>
+                                    <div>
+                                        {% if data.metric.is_calculated %}
+                                            <button onclick="event.stopPropagation(); showFormulaInfo('{{ data.metric.name }}', '{{ data.metric.calculation_formula|default:"" }}')" 
+                                                    class="p-1 rounded-full hover:bg-blue-100 transition-colors duration-200"
+                                                    title="View formula information">
+                                                <span class="material-icons text-blue-600 text-sm">help</span>
+                                            </button>
+                                        {% else %}
+                                            <button onclick="event.stopPropagation(); addMeasurement('{{ data.metric.name }}', '{{ data.metric.type }}', '{{ data.metric.unit }}', {{ data.metric.is_calculated|yesno:'true,false' }}, '{{ data.metric.calculation_formula|default:"" }}')" 
+                                                    class="p-1 rounded-full hover:bg-green-100 transition-colors duration-200"
+                                                    title="Add measurement">
+                                                <span class="material-icons text-green-600 text-sm">add_circle</span>
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            </td>
+                            
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                {% if data.target_value %}
+                                    <div class="text-sm font-medium text-blue-600">{{ data.target_value }}</div>
+                                    <div class="mt-2">
+                                        <button onclick="event.stopPropagation(); editTarget('{{ data.metric.name }}', '{{ data.metric.type }}', '{{ data.metric.unit }}', {{ data.target_value }})" 
+                                                class="p-1 rounded-full hover:bg-blue-100 transition-colors duration-200"
+                                                title="Edit target">
+                                            <span class="material-icons text-blue-600 text-sm">edit</span>
+                                        </button>
+                                    </div>
+                                {% else %}
+                                    <div class="text-sm text-gray-400 italic mb-2">No target</div>
+                                    <div>
+                                        <button onclick="event.stopPropagation(); setTarget('{{ data.metric.name }}', '{{ data.metric.type }}', '{{ data.metric.unit }}')" 
+                                                class="p-1 rounded-full hover:bg-blue-100 transition-colors duration-200"
+                                                title="Set target">
+                                            <span class="material-icons text-blue-600 text-sm">add_circle</span>
+                                        </button>
+                                    </div>
+                                {% endif %}
+                            </td>
+                            
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <button onclick="event.stopPropagation(); toggleFavorite({{ data.metric.id }}, this, 'tracked')" 
+                                        class="p-2 rounded-full hover:bg-red-100 transition-colors duration-200"
+                                        title="Stop tracking this metric">
+                                    <span class="material-icons text-red-600 text-lg">visibility_off</span>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 
-    <!-- All Metrics Table -->
-    <div class="bg-white rounded-lg shadow overflow-hidden">
-        <!-- Table Header -->
-        <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-xl font-semibold text-gray-900 flex items-center">
-                <span class="material-icons text-lg mr-2">table_chart</span>
-                All Health Metrics
-            </h2>
-            <p class="text-sm text-gray-600 mt-1">Click the eye icon to start tracking a metric</p>
-        </div>
-        
-        <!-- Table -->
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Metric</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Previous (Week Ago)</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Current</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Target</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    {% for data in metrics_data %}
-                    {% if data.metric.id not in favorite_metric_ids %}
-                    <tr class="metric-row hover:bg-gray-50 transition-colors duration-200" 
-                        data-category="{{ data.metric.type }}">
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex-1 min-w-0">
-                                <div class="text-sm font-medium text-gray-900">
-                                    {{ data.metric.name }}
-                                    {% if data.metric.is_calculated %}
-                                        <span class="material-icons text-blue-600 text-xs ml-1" title="Calculated metric">calculate</span>
+    <!-- All Metrics Tab -->
+    <div id="all-tab" class="tab-content hidden">
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-xl font-semibold text-gray-900 flex items-center">
+                    <span class="material-icons text-lg mr-2">table_chart</span>
+                    All Health Metrics
+                </h2>
+                <p class="text-sm text-gray-600 mt-1">Click the eye icon to start tracking a metric</p>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Metric</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Previous (Week Ago)</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Current</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Target</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for data in all_metrics_data %}
+                        <tr class="metric-row hover:bg-gray-50 transition-colors duration-200" 
+                            data-category="{{ data.metric.type }}" data-metric-id="{{ data.metric.id }}">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex-1 min-w-0">
+                                    <div class="text-sm font-medium text-gray-900">
+                                        {{ data.metric.name }}
+                                        {% if data.metric.is_calculated %}
+                                            <span class="material-icons text-blue-600 text-xs ml-1" title="Calculated metric">calculate</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="text-xs text-gray-500 uppercase tracking-wide">{{ data.metric.type_display }}</div>
+                                    <div class="text-xs text-gray-400">{{ data.metric.unit }}</div>
+                                    {% if data.metric.metric_id %}
+                                    <div class="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded mt-1 inline-block">ID: {{ data.metric.metric_id }}</div>
                                     {% endif %}
                                 </div>
-                                <div class="text-xs text-gray-500 uppercase tracking-wide">{{ data.metric.type_display }}</div>
-                                <div class="text-xs text-gray-400">{{ data.metric.unit }}</div>
-                                {% if data.metric.metric_id %}
-                                <div class="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded mt-1 inline-block">ID: {{ data.metric.metric_id }}</div>
+                            </td>
+                            
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                {% if data.previous_value %}
+                                    <div class="text-sm text-gray-700">{{ data.previous_value }}</div>
+                                {% else %}
+                                    <div class="text-sm text-gray-400 italic">No data</div>
                                 {% endif %}
-                            </div>
-                        </td>
-                        
-                        <td class="px-6 py-4 whitespace-nowrap text-center">
-                            {% if data.previous_value %}
-                                <div class="text-sm text-gray-700">{{ data.previous_value }}</div>
-                            {% else %}
-                                <div class="text-sm text-gray-400 italic">No data</div>
-                            {% endif %}
-                        </td>
-                        
-                        <td class="px-6 py-4 whitespace-nowrap text-center">
-                            {% if data.current_value %}
-                                <div class="text-lg font-semibold {% if data.metric.is_calculated %}text-purple-600{% else %}text-green-600{% endif %}">
-                                    {{ data.current_value }}
-                                    {% if data.metric.is_calculated %}
-                                        <span class="material-icons text-xs ml-1" title="Calculated value">calculate</span>
+                            </td>
+                            
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                {% if data.current_value %}
+                                    <div class="text-lg font-semibold {% if data.metric.is_calculated %}text-purple-600{% else %}text-green-600{% endif %}">
+                                        {{ data.current_value }}
+                                        {% if data.metric.is_calculated %}
+                                            <span class="material-icons text-xs ml-1" title="Calculated value">calculate</span>
+                                        {% endif %}
+                                    </div>
+                                    {% if data.current_timestamp %}
+                                        <div class="text-xs text-gray-500">{{ data.current_timestamp|date:"M d" }}</div>
                                     {% endif %}
-                                </div>
-                                {% if data.current_timestamp %}
-                                    <div class="text-xs text-gray-500">{{ data.current_timestamp|date:"M d" }}</div>
-                                {% endif %}
-                                {% if data.previous_value and data.current_value != data.previous_value %}
-                                    {% if data.current_value > data.previous_value %}
-                                        <div class="text-xs text-green-600 flex items-center justify-center mt-1">
-                                            <span class="material-icons text-sm mr-1">trending_up</span>
-                                            +{{ data.current_value|add:data.previous_value|floatformat:1 }}
-                                        </div>
-                                    {% else %}
-                                        <div class="text-xs text-red-600 flex items-center justify-center mt-1">
-                                            <span class="material-icons text-sm mr-1">trending_down</span>
-                                            {{ data.current_value|add:data.previous_value|floatformat:1 }}
-                                        </div>
+                                    {% if data.previous_value and data.current_value != data.previous_value %}
+                                        {% if data.current_value > data.previous_value %}
+                                            <div class="text-xs text-green-600 flex items-center justify-center mt-1">
+                                                <span class="material-icons text-sm mr-1">trending_up</span>
+                                                +{{ data.current_value|add:data.previous_value|floatformat:1 }}
+                                            </div>
+                                        {% else %}
+                                            <div class="text-xs text-red-600 flex items-center justify-center mt-1">
+                                                <span class="material-icons text-sm mr-1">trending_down</span>
+                                                {{ data.current_value|add:data.previous_value|floatformat:1 }}
+                                            </div>
+                                        {% endif %}
                                     {% endif %}
+                                    <div class="mt-2">
+                                        {% if data.metric.is_calculated %}
+                                            <button onclick="event.stopPropagation(); showFormulaInfo('{{ data.metric.name }}', '{{ data.metric.calculation_formula|default:"" }}')" 
+                                                    class="p-1 rounded-full hover:bg-blue-100 transition-colors duration-200"
+                                                    title="View formula information">
+                                                <span class="material-icons text-blue-600 text-sm">help</span>
+                                            </button>
+                                        {% else %}
+                                            <button onclick="event.stopPropagation(); editMeasurement('{{ data.metric.name }}', '{{ data.metric.type }}', '{{ data.metric.unit }}', {{ data.current_value }}, {{ data.metric.is_calculated|yesno:'true,false' }}, '{{ data.metric.calculation_formula|default:"" }}')" 
+                                                    class="p-1 rounded-full hover:bg-blue-100 transition-colors duration-200"
+                                                    title="Edit measurement">
+                                                <span class="material-icons text-blue-600 text-sm">edit</span>
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                {% else %}
+                                    <div class="text-sm text-gray-400 italic mb-2">No data</div>
+                                    <div>
+                                        {% if data.metric.is_calculated %}
+                                            <button onclick="event.stopPropagation(); showFormulaInfo('{{ data.metric.name }}', '{{ data.metric.calculation_formula|default:"" }}')" 
+                                                    class="p-1 rounded-full hover:bg-blue-100 transition-colors duration-200"
+                                                    title="View formula information">
+                                                <span class="material-icons text-blue-600 text-sm">help</span>
+                                            </button>
+                                        {% else %}
+                                            <button onclick="event.stopPropagation(); addMeasurement('{{ data.metric.name }}', '{{ data.metric.type }}', '{{ data.metric.unit }}', {{ data.metric.is_calculated|yesno:'true,false' }}, '{{ data.metric.calculation_formula|default:"" }}')" 
+                                                    class="p-1 rounded-full hover:bg-green-100 transition-colors duration-200"
+                                                    title="Add measurement">
+                                                <span class="material-icons text-green-600 text-sm">add_circle</span>
+                                            </button>
+                                        {% endif %}
+                                    </div>
                                 {% endif %}
-                                <div class="mt-2">
-                                    {% if data.metric.is_calculated %}
-                                        <button onclick="event.stopPropagation(); showFormulaInfo('{{ data.metric.name }}', '{{ data.metric.calculation_formula|default:"" }}')" 
+                            </td>
+                            
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                {% if data.target_value %}
+                                    <div class="text-sm font-medium text-blue-600">{{ data.target_value }}</div>
+                                    <div class="mt-2">
+                                        <button onclick="event.stopPropagation(); editTarget('{{ data.metric.name }}', '{{ data.metric.type }}', '{{ data.metric.unit }}', {{ data.target_value }})" 
                                                 class="p-1 rounded-full hover:bg-blue-100 transition-colors duration-200"
-                                                title="View formula information">
-                                            <span class="material-icons text-blue-600 text-sm">help</span>
-                                        </button>
-                                    {% else %}
-                                        <button onclick="event.stopPropagation(); editMeasurement('{{ data.metric.name }}', '{{ data.metric.type }}', '{{ data.metric.unit }}', {{ data.current_value }}, {{ data.metric.is_calculated|yesno:'true,false' }}, '{{ data.metric.calculation_formula|default:"" }}')" 
-                                                class="p-1 rounded-full hover:bg-blue-100 transition-colors duration-200"
-                                                title="Edit measurement">
+                                                title="Edit target">
                                             <span class="material-icons text-blue-600 text-sm">edit</span>
                                         </button>
-                                    {% endif %}
-                                </div>
-                            {% else %}
-                                <div class="text-sm text-gray-400 italic mb-2">No data</div>
-                                <div>
-                                    {% if data.metric.is_calculated %}
-                                        <button onclick="event.stopPropagation(); showFormulaInfo('{{ data.metric.name }}', '{{ data.metric.calculation_formula|default:"" }}')" 
+                                    </div>
+                                {% else %}
+                                    <div class="text-sm text-gray-400 italic mb-2">No target</div>
+                                    <div>
+                                        <button onclick="event.stopPropagation(); setTarget('{{ data.metric.name }}', '{{ data.metric.type }}', '{{ data.metric.unit }}')" 
                                                 class="p-1 rounded-full hover:bg-blue-100 transition-colors duration-200"
-                                                title="View formula information">
-                                            <span class="material-icons text-blue-600 text-sm">help</span>
+                                                title="Set target">
+                                            <span class="material-icons text-blue-600 text-sm">add_circle</span>
                                         </button>
-                                    {% else %}
-                                        <button onclick="event.stopPropagation(); addMeasurement('{{ data.metric.name }}', '{{ data.metric.type }}', '{{ data.metric.unit }}', {{ data.metric.is_calculated|yesno:'true,false' }}, '{{ data.metric.calculation_formula|default:"" }}')" 
-                                                class="p-1 rounded-full hover:bg-green-100 transition-colors duration-200"
-                                                title="Add measurement">
-                                            <span class="material-icons text-green-600 text-sm">add_circle</span>
-                                        </button>
-                                    {% endif %}
-                                </div>
-                            {% endif %}
-                        </td>
-                        
-                        <td class="px-6 py-4 whitespace-nowrap text-center">
-                            {% if data.target_value %}
-                                <div class="text-sm font-medium text-blue-600">{{ data.target_value }}</div>
-                                <div class="mt-2">
-                                    <button onclick="event.stopPropagation(); editTarget('{{ data.metric.name }}', '{{ data.metric.type }}', '{{ data.metric.unit }}', {{ data.target_value }})" 
-                                            class="p-1 rounded-full hover:bg-blue-100 transition-colors duration-200"
-                                            title="Edit target">
-                                        <span class="material-icons text-blue-600 text-sm">edit</span>
-                                    </button>
-                                </div>
-                            {% else %}
-                                <div class="text-sm text-gray-400 italic mb-2">No target</div>
-                                <div>
-                                    <button onclick="event.stopPropagation(); setTarget('{{ data.metric.name }}', '{{ data.metric.type }}', '{{ data.metric.unit }}')" 
-                                            class="p-1 rounded-full hover:bg-blue-100 transition-colors duration-200"
-                                            title="Set target">
-                                        <span class="material-icons text-blue-600 text-sm">add_circle</span>
-                                    </button>
-                                </div>
-                            {% endif %}
-                        </td>
-                        
-                        <td class="px-6 py-4 whitespace-nowrap text-center">
-                            <button onclick="event.stopPropagation(); toggleFavorite({{ data.metric.id }}, this)" 
-                                    class="p-2 rounded-full hover:bg-green-100 transition-colors duration-200"
-                                    title="Start tracking this metric">
-                                <span class="material-icons text-gray-400 hover:text-green-600 text-lg">visibility</span>
-                            </button>
-                        </td>
-                    </tr>
-                    {% endif %}
-                    {% endfor %}
-                </tbody>
-            </table>
+                                    </div>
+                                {% endif %}
+                            </td>
+                            
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <button onclick="event.stopPropagation(); toggleFavorite({{ data.metric.id }}, this, 'all')" 
+                                        class="p-2 rounded-full hover:bg-green-100 transition-colors duration-200"
+                                        title="{% if data.metric.id in favorite_metric_ids %}Stop tracking this metric{% else %}Start tracking this metric{% endif %}">
+                                    <span class="material-icons text-lg {% if data.metric.id in favorite_metric_ids %}text-red-600{% else %}text-gray-400 hover:text-green-600{% endif %}">
+                                        {% if data.metric.id in favorite_metric_ids %}visibility_off{% else %}visibility{% endif %}
+                                    </span>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
@@ -485,10 +465,32 @@
 
 {% block extra_js %}
 <script>
+// Tab functionality
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const tabName = this.dataset.tab;
+        
+        // Update active tab button
+        document.querySelectorAll('.tab-btn').forEach(b => {
+            b.classList.remove('active', 'border-blue-500', 'text-blue-600');
+            b.classList.add('border-transparent', 'text-gray-500');
+        });
+        this.classList.add('active', 'border-blue-500', 'text-blue-600');
+        this.classList.remove('border-transparent', 'text-gray-500');
+        
+        // Show/hide tab content
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.add('hidden');
+        });
+        document.getElementById(tabName + '-tab').classList.remove('hidden');
+    });
+});
+
 // Category filtering
 document.querySelectorAll('.filter-btn').forEach(btn => {
     btn.addEventListener('click', function() {
         const category = this.dataset.category;
+        const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
         
         // Update active button
         document.querySelectorAll('.filter-btn').forEach(b => {
@@ -498,8 +500,12 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
         this.classList.add('active', 'bg-blue-600', 'text-white');
         this.classList.remove('text-gray-600', 'hover:text-gray-900');
         
-        // Filter table rows
-        document.querySelectorAll('.metric-row').forEach(row => {
+        // Filter table rows based on active tab
+        const tableRows = activeTab === 'tracked' ? 
+            document.querySelectorAll('.tracked-metric-row') : 
+            document.querySelectorAll('.metric-row');
+        
+        tableRows.forEach(row => {
             if (category === 'all' || row.dataset.category === category) {
                 row.style.display = '';
             } else {
@@ -510,7 +516,7 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
 });
 
 // Toggle favorite function
-function toggleFavorite(metricId, button) {
+function toggleFavorite(metricId, button, tabType) {
     fetch('{% url "metrics:toggle_favorite" %}', {
         method: 'POST',
         headers: {
@@ -522,8 +528,70 @@ function toggleFavorite(metricId, button) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Reload the page to update the layout
-            location.reload();
+            if (tabType === 'tracked') {
+                // Remove the row from tracked metrics tab
+                const row = button.closest('tr');
+                row.style.display = 'none';
+                
+                // Update the count in the tracked tab
+                const visibleTrackedRows = document.querySelectorAll('.tracked-metric-row:not([style*="display: none"])').length;
+                document.querySelector('[data-tab="tracked"] .bg-blue-100').textContent = visibleTrackedRows;
+                
+                // Update the eye icon in the all metrics tab
+                const allTabRow = document.querySelector(`#all-tab tr[data-metric-id="${metricId}"]`);
+                if (allTabRow) {
+                    const allTabButton = allTabRow.querySelector('button');
+                    const allTabIcon = allTabButton.querySelector('span');
+                    allTabIcon.textContent = 'visibility';
+                    allTabIcon.className = 'material-icons text-lg text-gray-400 hover:text-green-600';
+                    allTabButton.title = 'Start tracking this metric';
+                }
+            } else {
+                // Update the eye icon in the all metrics tab
+                const icon = button.querySelector('span');
+                if (data.is_favorite) {
+                    icon.textContent = 'visibility_off';
+                    icon.className = 'material-icons text-lg text-red-600';
+                    button.title = 'Stop tracking this metric';
+                    
+                    // Add the row to tracked metrics tab
+                    const row = button.closest('tr');
+                    const trackedTbody = document.querySelector('#tracked-tab tbody');
+                    const newRow = row.cloneNode(true);
+                    newRow.classList.add('tracked-metric-row');
+                    newRow.classList.remove('metric-row');
+                    newRow.classList.add('hover:bg-blue-50');
+                    newRow.classList.remove('hover:bg-gray-50');
+                    
+                    // Update the button in the new row
+                    const newButton = newRow.querySelector('button');
+                    const newIcon = newButton.querySelector('span');
+                    newIcon.textContent = 'visibility_off';
+                    newIcon.className = 'material-icons text-lg text-red-600';
+                    newButton.title = 'Stop tracking this metric';
+                    newButton.onclick = function() { toggleFavorite(metricId, this, 'tracked'); };
+                    
+                    trackedTbody.appendChild(newRow);
+                    
+                    // Update the count in the tracked tab
+                    const trackedCount = document.querySelectorAll('.tracked-metric-row:not([style*="display: none"])').length;
+                    document.querySelector('[data-tab="tracked"] .bg-blue-100').textContent = trackedCount;
+                } else {
+                    icon.textContent = 'visibility';
+                    icon.className = 'material-icons text-lg text-gray-400 hover:text-green-600';
+                    button.title = 'Start tracking this metric';
+                    
+                    // Remove the row from tracked metrics tab
+                    const trackedRow = document.querySelector(`#tracked-tab tr[data-metric-id="${metricId}"]`);
+                    if (trackedRow) {
+                        trackedRow.remove();
+                        
+                        // Update the count in the tracked tab
+                        const trackedCount = document.querySelectorAll('.tracked-metric-row:not([style*="display: none"])').length;
+                        document.querySelector('[data-tab="tracked"] .bg-blue-100').textContent = trackedCount;
+                    }
+                }
+            }
         } else {
             alert('Error: ' + data.error);
         }

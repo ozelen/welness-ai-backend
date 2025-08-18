@@ -33,21 +33,25 @@ def health_calculator_dashboard(request):
     # Get favorite metric IDs for UI
     favorite_metric_ids = [metric['id'] for metric in favorite_metrics]
     
-    # Prepare metrics data
-    metrics_data = []
+    # Prepare separate data for each tab
+    tracked_metrics_data = []
+    all_metrics_data = []
     
-    # First add favorite metrics
-    for metric in favorite_metrics:
-        metrics_data.append(get_metric_data(user, metric))
-    
-    # Then add other metrics
+    # Process all available metrics
     for metric in available_metrics:
-        if metric['id'] not in favorite_metric_ids:
-            metrics_data.append(get_metric_data(user, metric))
+        metric_data = get_metric_data(user, metric)
+        
+        # Add to all metrics tab
+        all_metrics_data.append(metric_data)
+        
+        # Add to tracked metrics tab only if it's a favorite
+        if metric['id'] in favorite_metric_ids:
+            tracked_metrics_data.append(metric_data)
 
     context = {
         'favorite_metrics': favorite_metrics,
-        'metrics_data': metrics_data,
+        'tracked_metrics_data': tracked_metrics_data,
+        'all_metrics_data': all_metrics_data,
         'available_metrics': available_metrics,
         'favorite_metric_ids': favorite_metric_ids,
     }
