@@ -114,6 +114,7 @@
             <ul class="nav-links">
                 <li><a href="{% url 'dashboard' %}">Dashboard</a></li>
                 <li><a href="{% url 'meals:dashboard' %}">Meals</a></li>
+                <li><a href="{% url 'metrics:dashboard' %}">Metrics</a></li>
                 <li><a href="{% url 'profile' %}">Profile</a></li>
                 {% if user.is_authenticated %}
                 <li><a href="{% url 'user_auth:logout' %}">Logout</a></li>
