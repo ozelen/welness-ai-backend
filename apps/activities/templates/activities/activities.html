@@ -1,0 +1,761 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Activities Management{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">Activities Management</h1>
+                <p class="text-gray-600">Create and manage your workouts with exercises</p>
+            </div>
+            <div class="flex space-x-3">
+                <button onclick="openActivityModal()" 
+                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                    <span class="material-icons text-lg mr-2">add</span>
+                    Add Activity
+                </button>
+                <a href="{% url 'planner:calendar' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    <span class="material-icons text-lg mr-2">calendar_today</span>
+                    Calendar View
+                </a>
+                <a href="{% url 'dashboard' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Activity Type Filter -->
+    <div class="bg-white rounded-lg shadow mb-8">
+        <div class="p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-medium text-gray-900">Filter by Activity Type</h2>
+                    <p class="text-sm text-gray-600">Select an activity type to filter activities</p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <select id="activityTypeFilter" onchange="filterByActivityType()" 
+                            class="border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">All Activity Types</option>
+                        {% for activity_type in activity_types %}
+                        <option value="{{ activity_type.id }}">
+                            {{ activity_type.display_name }} ({{ activity_type.category }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <button onclick="clearActivityTypeFilter()" 
+                            class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                        Clear Filter
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Activities Summary -->
+    <div class="mb-4">
+        <p class="text-sm text-gray-600">
+            {% if selected_activity_type_id %}
+                Showing {{ activities.count }} activit{{ activities.count|pluralize:"y,ies" }} for 
+                {% for activity_type in activity_types %}
+                    {% if activity_type.id == selected_activity_type_id %}{{ activity_type.display_name }}{% endif %}
+                {% endfor %}
+            {% else %}
+                Showing {{ activities.count }} activit{{ activities.count|pluralize:"y,ies" }} across all types
+            {% endif %}
+        </p>
+    </div>
+
+    <!-- Activities Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {% for activity in activities %}
+        <div class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-200 {% if activity.is_scheduled %}border-l-4 border-green-500{% endif %}" 
+             data-activity-id="{{ activity.id }}"
+             data-activity-type="{{ activity.activity_type.id }}">
+            <div class="p-6">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-1">
+                            <h3 class="text-xl font-semibold text-gray-900">{{ activity.activity_type.display_name }}</h3>
+                            {% if activity.is_scheduled %}
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                <span class="material-icons text-xs mr-1">schedule</span>
+                                {{ activity.start_date|date:"M j" }} at {{ activity.duration_hours }}h
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div class="flex items-center mt-1">
+                            <p class="text-sm text-gray-600">{{ activity.activity_type.category }}</p>
+                            {% if activity.is_completed %}
+                            <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                <span class="material-icons text-xs mr-1">check_circle</span>
+                                Completed
+                            </span>
+                            {% else %}
+                            <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                                <span class="material-icons text-xs mr-1">schedule</span>
+                                Planned
+                            </span>
+                            {% endif %}
+                        </div>
+                        {% if activity.notes %}
+                        <p class="text-sm text-gray-600 mt-1">{{ activity.notes|truncatewords:20 }}</p>
+                        {% endif %}
+                        
+                        <!-- Recurrence Information -->
+                        {% if activity.is_scheduled and activity.recurrence_type != 'none' %}
+                        <div class="mt-2 p-2 bg-blue-50 rounded border-l-2 border-blue-400">
+                            <div class="flex items-center text-xs text-blue-800">
+                                <span class="material-icons text-xs mr-1">repeat</span>
+                                <span class="font-medium">Recurring:</span>
+                                <span class="ml-1">
+                                    {% if activity.recurrence_type == 'daily' %}
+                                        Daily
+                                    {% elif activity.recurrence_type == 'weekly' %}
+                                        Weekly
+                                    {% elif activity.recurrence_type == 'weekday' %}
+                                        Weekdays (Mon-Fri)
+                                    {% elif activity.recurrence_type == 'weekend' %}
+                                        Weekends (Sat-Sun)
+                                    {% elif activity.recurrence_type == 'custom' and activity.recurrence_days %}
+                                        {{ activity.recurrence_days|title }}
+                                    {% else %}
+                                        {{ activity.recurrence_type|title }}
+                                    {% endif %}
+                                </span>
+                                {% if activity.recurrence_until %}
+                                <span class="ml-2">until {{ activity.recurrence_until|date:"M j, Y" }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="flex space-x-2 ml-4">
+                        <button onclick="scheduleActivity({{ activity.id }})" 
+                                class="{% if activity.is_scheduled %}text-green-400 hover:text-green-600{% else %}text-gray-400 hover:text-blue-600{% endif %} transition-colors duration-200"
+                                title="{% if activity.is_scheduled %}Edit schedule{% else %}Schedule activity{% endif %}">
+                            <span class="material-icons text-lg">schedule</span>
+                        </button>
+                        <button onclick="editActivity({{ activity.id }})" 
+                                class="text-gray-400 hover:text-blue-600 transition-colors duration-200"
+                                title="Edit activity">
+                            <span class="material-icons text-lg">edit</span>
+                        </button>
+                        <button onclick="deleteActivity({{ activity.id }}, '{{ activity.activity_type.display_name }}')" 
+                                class="text-gray-400 hover:text-red-600 transition-colors duration-200"
+                                title="Delete activity">
+                            <span class="material-icons text-lg">delete</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Exercises List -->
+                <div class="mb-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-sm font-medium text-gray-700">Exercises</h4>
+                        <button data-action="add-exercise" data-activity-id="{{ activity.id }}" 
+                                class="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                            + Add Exercise
+                        </button>
+                    </div>
+                    
+                    {% if activity.exercises.all %}
+                    <div class="space-y-2">
+                        {% for activity_exercise in activity.exercises.all %}
+                        <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
+                            <div class="flex-1">
+                                <span class="text-sm font-medium text-gray-900">{{ activity_exercise.exercise.name }}</span>
+                                {% if activity_exercise.get_duration_minutes %}
+                                <span class="text-sm text-gray-600 ml-2">{{ activity_exercise.get_duration_minutes }}min</span>
+                                {% endif %}
+                                {% if activity_exercise.get_sets and activity_exercise.get_sets > 1 %}
+                                <span class="text-sm text-gray-600 ml-2">{{ activity_exercise.get_sets }} sets</span>
+                                {% endif %}
+                                {% if activity_exercise.get_reps %}
+                                <span class="text-sm text-gray-600 ml-2">{{ activity_exercise.get_reps }} reps</span>
+                                {% endif %}
+                                {% if activity_exercise.get_weight_kg %}
+                                <span class="text-sm text-gray-600 ml-2">{{ activity_exercise.get_weight_kg }}kg</span>
+                                {% endif %}
+                                {% if activity_exercise.get_distance_km %}
+                                <span class="text-sm text-gray-600 ml-2">{{ activity_exercise.get_distance_km }}km</span>
+                                {% endif %}
+                                {% if activity_exercise.notes %}
+                                <div class="text-xs text-gray-500 mt-1">{{ activity_exercise.notes|truncatewords:10 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="flex space-x-1">
+                                <button onclick="editActivityExercise({{ activity_exercise.id }})" 
+                                        class="text-gray-400 hover:text-blue-600 transition-colors duration-200"
+                                        title="Edit exercise">
+                                    <span class="material-icons text-sm">edit</span>
+                                </button>
+                                <button onclick="deleteActivityExercise({{ activity_exercise.id }})" 
+                                        class="text-gray-400 hover:text-red-600 transition-colors duration-200"
+                                        title="Remove exercise">
+                                    <span class="material-icons text-sm">delete</span>
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-gray-500">
+                        <span class="material-icons text-2xl mb-2">fitness_center</span>
+                        <p class="text-sm">No exercises added yet</p>
+                        <button data-action="add-exercise" data-activity-id="{{ activity.id }}" 
+                                class="text-sm text-blue-600 hover:text-blue-700 font-medium mt-1">
+                            + Add your first exercise
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Nutrition Summary -->
+                <div class="border-t pt-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-700">Calories Burned</h4>
+                            <p class="text-lg font-semibold text-green-600">
+                                {% if activity.calories_burned %}
+                                    {{ activity.calories_burned|floatformat:0 }} kcal
+                                {% else %}
+                                    <span class="text-gray-400">Not calculated</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="text-right">
+                            <h4 class="text-sm font-medium text-gray-700">Duration</h4>
+                            <p class="text-lg font-semibold text-blue-600">{{ activity.duration_hours }}h</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-span-full">
+            <div class="text-center py-12">
+                <span class="material-icons text-4xl text-gray-300 mb-4">fitness_center</span>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">No activities yet</h3>
+                <p class="text-gray-600 mb-6">Start by creating your first workout activity</p>
+                <button onclick="openActivityModal()" 
+                        class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">
+                    <span class="material-icons text-lg mr-2">add</span>
+                    Create Your First Activity
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Add Activity Modal -->
+<div id="addActivityModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-medium text-gray-900">Create New Activity</h3>
+                    <button onclick="closeActivityModal()" class="text-gray-400 hover:text-gray-600">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+            </div>
+            <form id="activityForm" method="post">
+                {% csrf_token %}
+                <div class="p-6 space-y-4">
+                    <div>
+                        <label for="activity_type" class="block text-sm font-medium text-gray-700">Activity Type</label>
+                        <select id="activity_type" name="activity_type" required
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Select activity type</option>
+                            {% for activity_type in activity_types %}
+                            <option value="{{ activity_type.id }}">{{ activity_type.display_name }} ({{ activity_type.category }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="duration_hours" class="block text-sm font-medium text-gray-700">Duration (hours)</label>
+                        <input type="number" id="duration_hours" name="duration_hours" step="0.25" min="0.25" required
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="date" class="block text-sm font-medium text-gray-700">Date</label>
+                        <input type="date" id="date" name="date" required
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="notes" class="block text-sm font-medium text-gray-700">Notes (optional)</label>
+                        <textarea id="notes" name="notes" rows="3"
+                                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    </div>
+                </div>
+                <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
+                    <button type="button" onclick="closeActivityModal()" 
+                            class="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                            class="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                        Create Activity
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Exercise Modal -->
+<div id="addExerciseModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-medium text-gray-900">Add Exercise to Activity</h3>
+                    <button onclick="closeExerciseModal()" class="text-gray-400 hover:text-gray-600">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+            </div>
+            <form id="exerciseForm" method="post">
+                {% csrf_token %}
+                <input type="hidden" id="activity_id" name="activity_id">
+                <div class="p-6 space-y-4">
+                    <div>
+                        <label for="exercise" class="block text-sm font-medium text-gray-700">Exercise</label>
+                        <input type="text" id="exercise" name="exercise_name" required
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
+                               placeholder="Type exercise name...">
+                        <div id="exerciseSuggestions" class="mt-1 hidden">
+                            <!-- Exercise suggestions will be populated here -->
+                        </div>
+                    </div>
+                    <div>
+                        <label for="exercise_notes" class="block text-sm font-medium text-gray-700">Description</label>
+                        <textarea id="exercise_notes" name="notes" rows="4"
+                                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
+                                  placeholder="Describe your workout details: sets, reps, weight, distance, technique, or any other information..."></textarea>
+                    </div>
+                </div>
+                <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
+                    <button type="button" onclick="closeExerciseModal()" 
+                            class="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                            class="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
+                        Add Exercise
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Schedule Activity Modal -->
+<div id="scheduleActivityModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div class="flex justify-between items-center p-6 border-b">
+                <h3 class="text-lg font-semibold text-gray-900">Schedule Activity</h3>
+                <button onclick="closeScheduleActivityModal()" class="text-gray-400 hover:text-gray-600">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            
+            <form id="scheduleActivityForm" class="p-6">
+                <input type="hidden" id="schedule_activity_id" name="activity_id">
+                
+                <div class="space-y-4">
+                    <div>
+                        <label for="schedule_start_date" class="block text-sm font-medium text-gray-700">Start Date *</label>
+                        <input type="date" id="schedule_start_date" name="start_date" required
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500">
+                    </div>
+                    
+                    <div>
+                        <label for="schedule_start_time" class="block text-sm font-medium text-gray-700">Start Time</label>
+                        <input type="time" id="schedule_start_time" name="start_time"
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500">
+                    </div>
+                    
+                    <div>
+                        <label for="schedule_recurrence_type" class="block text-sm font-medium text-gray-700">Recurrence</label>
+                        <select id="schedule_recurrence_type" name="recurrence_type"
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500">
+                            <option value="none">No Recurrence</option>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="weekday">Weekdays (Mon-Fri)</option>
+                            <option value="weekend">Weekends (Sat-Sun)</option>
+                            <option value="custom">Custom Days</option>
+                        </select>
+                    </div>
+                    
+                    <div id="schedule_recurrence_until_field" class="hidden">
+                        <label for="schedule_recurrence_until" class="block text-sm font-medium text-gray-700">Recurrence End Date</label>
+                        <input type="date" id="schedule_recurrence_until" name="recurrence_until"
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500">
+                    </div>
+                    
+                    <div id="schedule_recurrence_days_field" class="hidden">
+                        <label for="schedule_recurrence_days" class="block text-sm font-medium text-gray-700">Custom Days</label>
+                        <input type="text" id="schedule_recurrence_days" name="recurrence_days"
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
+                               placeholder="e.g., mon,tue,thu,fri">
+                        <p class="text-xs text-gray-500 mt-1">Enter days separated by commas: mon, tue, wed, thu, fri, sat, sun</p>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" onclick="closeScheduleActivityModal()" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                        Schedule Activity
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Modal functions
+function openActivityModal() {
+    document.getElementById('addActivityModal').classList.remove('hidden');
+    document.getElementById('date').value = new Date().toISOString().split('T')[0];
+}
+
+function closeActivityModal() {
+    document.getElementById('addActivityModal').classList.add('hidden');
+    document.getElementById('activityForm').reset();
+}
+
+function openExerciseModal(activityId) {
+    document.getElementById('addExerciseModal').classList.remove('hidden');
+    document.getElementById('activity_id').value = activityId;
+}
+
+function closeExerciseModal() {
+    document.getElementById('addExerciseModal').classList.add('hidden');
+    document.getElementById('exerciseForm').reset();
+    document.getElementById('exerciseSuggestions').classList.add('hidden');
+}
+
+function openScheduleActivityModal(activityId) {
+    // First, load the activity data
+    fetch(`{% url "activities:get_activity_data" 0 %}`.replace('0', activityId))
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const activity = data.activity;
+                
+                // Populate the form fields
+                document.getElementById('schedule_activity_id').value = activity.id;
+                
+                if (activity.start_date) {
+                    document.getElementById('schedule_start_date').value = activity.start_date.split('T')[0];
+                } else {
+                    document.getElementById('schedule_start_date').value = new Date().toISOString().split('T')[0];
+                }
+                
+                if (activity.start_time) {
+                    document.getElementById('schedule_start_time').value = activity.start_time.substring(0, 5);
+                } else {
+                    document.getElementById('schedule_start_time').value = new Date().toTimeString().substring(0, 5);
+                }
+                
+                document.getElementById('schedule_recurrence_type').value = activity.recurrence_type || 'none';
+                
+                if (activity.recurrence_until) {
+                    document.getElementById('schedule_recurrence_until').value = activity.recurrence_until.split('T')[0];
+                }
+                
+                if (activity.recurrence_days) {
+                    document.getElementById('schedule_recurrence_days').value = activity.recurrence_days;
+                }
+                
+                // Show/hide fields based on recurrence type
+                const recurrenceUntilField = document.getElementById('schedule_recurrence_until_field');
+                const recurrenceDaysField = document.getElementById('schedule_recurrence_days_field');
+                
+                if (activity.recurrence_type === 'none') {
+                    recurrenceUntilField.classList.add('hidden');
+                    recurrenceDaysField.classList.add('hidden');
+                } else if (activity.recurrence_type === 'custom') {
+                    recurrenceUntilField.classList.remove('hidden');
+                    recurrenceDaysField.classList.remove('hidden');
+                } else {
+                    recurrenceUntilField.classList.remove('hidden');
+                    recurrenceDaysField.classList.add('hidden');
+                }
+                
+                // Show the modal
+                document.getElementById('scheduleActivityModal').classList.remove('hidden');
+            } else {
+                alert('Error loading activity data: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while loading activity data.');
+        });
+}
+
+function closeScheduleActivityModal() {
+    document.getElementById('scheduleActivityModal').classList.add('hidden');
+    document.getElementById('scheduleActivityForm').reset();
+}
+
+// Close modals when clicking outside
+window.onclick = function(event) {
+    const activityModal = document.getElementById('addActivityModal');
+    const exerciseModal = document.getElementById('addExerciseModal');
+    const scheduleActivityModal = document.getElementById('scheduleActivityModal');
+    
+    if (event.target == activityModal) {
+        closeActivityModal();
+    }
+    if (event.target == exerciseModal) {
+        closeExerciseModal();
+    }
+    if (event.target == scheduleActivityModal) {
+        closeScheduleActivityModal();
+    }
+}
+
+// Filter functions
+function filterByActivityType() {
+    const filterValue = document.getElementById('activityTypeFilter').value;
+    const activities = document.querySelectorAll('[data-activity-id]');
+    
+    activities.forEach(activity => {
+        if (filterValue === '' || activity.dataset.activityType === filterValue) {
+            activity.style.display = '';
+        } else {
+            activity.style.display = 'none';
+        }
+    });
+}
+
+function clearActivityTypeFilter() {
+    document.getElementById('activityTypeFilter').value = '';
+    filterByActivityType();
+}
+
+// Handle recurrence fields visibility in scheduling modal
+document.getElementById('schedule_recurrence_type').addEventListener('change', function() {
+    const recurrenceUntilField = document.getElementById('schedule_recurrence_until_field');
+    const recurrenceDaysField = document.getElementById('schedule_recurrence_days_field');
+    
+    if (this.value === 'none') {
+        recurrenceUntilField.classList.add('hidden');
+        recurrenceDaysField.classList.add('hidden');
+    } else if (this.value === 'custom') {
+        recurrenceUntilField.classList.remove('hidden');
+        recurrenceDaysField.classList.remove('hidden');
+    } else {
+        recurrenceUntilField.classList.remove('hidden');
+        recurrenceDaysField.classList.add('hidden');
+    }
+});
+
+// Form submissions
+document.getElementById('activityForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch('{% url "activities:create_activity" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeActivityModal();
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error occurred'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while creating the activity.');
+    });
+});
+
+document.getElementById('exerciseForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch('{% url "activities:create_activity_exercise" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeExerciseModal();
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error occurred'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while adding the exercise.');
+    });
+});
+
+document.getElementById('scheduleActivityForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch('{% url "activities:schedule_activity" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeScheduleActivityModal();
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error occurred'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while scheduling the activity.');
+    });
+});
+
+// Exercise suggestions (similar to ingredient suggestions in meals)
+let exerciseSuggestionsTimeout;
+
+document.getElementById('exercise').addEventListener('input', function() {
+    clearTimeout(exerciseSuggestionsTimeout);
+    const query = this.value.trim();
+    
+    if (query.length < 2) {
+        document.getElementById('exerciseSuggestions').classList.add('hidden');
+        return;
+    }
+    
+    exerciseSuggestionsTimeout = setTimeout(() => {
+        fetch(`{% url "activities:exercise_suggestions" %}?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                const suggestionsDiv = document.getElementById('exerciseSuggestions');
+                suggestionsDiv.innerHTML = '';
+                
+                if (data.suggestions && data.suggestions.length > 0) {
+                    data.suggestions.forEach(exercise => {
+                        const div = document.createElement('div');
+                        div.className = 'p-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200';
+                        div.textContent = exercise.name;
+                        div.onclick = () => {
+                            document.getElementById('exercise').value = exercise.name;
+                            suggestionsDiv.classList.add('hidden');
+                        };
+                        suggestionsDiv.appendChild(div);
+                    });
+                    suggestionsDiv.classList.remove('hidden');
+                } else {
+                    suggestionsDiv.classList.add('hidden');
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching exercise suggestions:', error);
+            });
+    }, 300);
+});
+
+// Event delegation for add exercise buttons
+document.addEventListener('click', function(e) {
+    if (e.target.matches('[data-action="add-exercise"]')) {
+        const activityId = e.target.dataset.activityId;
+        openExerciseModal(activityId);
+    }
+});
+
+// Placeholder functions for other actions
+function scheduleActivity(activityId) {
+    openScheduleActivityModal(activityId);
+}
+
+function editActivity(activityId) {
+    // TODO: Implement edit functionality
+    alert('Edit activity ' + activityId + ' - Not implemented yet');
+}
+
+function deleteActivity(activityId, activityName) {
+    if (confirm(`Are you sure you want to delete "${activityName}"?`)) {
+        fetch(`{% url "activities:delete_activity" 0 %}`.replace('0', activityId), {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + (data.error || 'Unknown error occurred'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while deleting the activity.');
+        });
+    }
+}
+
+function editActivityExercise(exerciseId) {
+    // TODO: Implement edit functionality
+    alert('Edit exercise ' + exerciseId + ' - Not implemented yet');
+}
+
+function deleteActivityExercise(exerciseId) {
+    if (confirm('Are you sure you want to remove this exercise?')) {
+        fetch(`{% url "activities:delete_activity_exercise" 0 %}`.replace('0', exerciseId), {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + (data.error || 'Unknown error occurred'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while removing the exercise.');
+        });
+    }
+}
+</script>
+{% endblock %}

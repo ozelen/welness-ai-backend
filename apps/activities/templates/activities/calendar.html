@@ -1,0 +1,250 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Activities Calendar{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">Activities Calendar</h1>
+        <div class="flex space-x-2">
+            <a href="{% url 'activities:manage' %}" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors">
+                Manage Activities
+            </a>
+            <button onclick="openLogActivityModal()" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors">
+                Log Activity
+            </button>
+        </div>
+    </div>
+
+    <!-- Week Navigation -->
+    <div class="flex justify-between items-center mb-6">
+        <a href="?week={{ previous_week }}" class="text-blue-600 hover:text-blue-800">
+            ← Previous Week
+        </a>
+        <h2 class="text-xl font-semibold text-gray-800">
+            {{ start_of_week|date:"M d" }} - {{ end_of_week|date:"M d, Y" }}
+        </h2>
+        <a href="?week={{ next_week }}" class="text-blue-600 hover:text-blue-800">
+            Next Week →
+        </a>
+    </div>
+
+    <!-- Week Totals -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Week Summary</h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="text-center">
+                <div class="text-2xl font-bold text-green-600">{{ week_totals.total_calories|floatformat:0 }}</div>
+                <div class="text-sm text-gray-600">Calories Burned</div>
+            </div>
+            <div class="text-center">
+                <div class="text-2xl font-bold text-blue-600">{{ week_totals.total_duration|floatformat:1 }}</div>
+                <div class="text-sm text-gray-600">Hours</div>
+            </div>
+            <div class="text-center">
+                <div class="text-2xl font-bold text-purple-600">{{ week_totals.total_activities }}</div>
+                <div class="text-sm text-gray-600">Planned Activities</div>
+            </div>
+            <div class="text-center">
+                <div class="text-2xl font-bold text-orange-600">{{ week_totals.total_records }}</div>
+                <div class="text-sm text-gray-600">Logged Activities</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calendar Grid -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="grid grid-cols-7 gap-px bg-gray-200">
+            <!-- Day Headers -->
+            <div class="bg-gray-50 p-4 text-center font-semibold text-gray-700">Mon</div>
+            <div class="bg-gray-50 p-4 text-center font-semibold text-gray-700">Tue</div>
+            <div class="bg-gray-50 p-4 text-center font-semibold text-gray-700">Wed</div>
+            <div class="bg-gray-50 p-4 text-center font-semibold text-gray-700">Thu</div>
+            <div class="bg-gray-50 p-4 text-center font-semibold text-gray-700">Fri</div>
+            <div class="bg-gray-50 p-4 text-center font-semibold text-gray-700">Sat</div>
+            <div class="bg-gray-50 p-4 text-center font-semibold text-gray-700">Sun</div>
+        </div>
+        
+        <div class="grid grid-cols-7 gap-px bg-gray-200">
+            {% for date, day_data in activities_by_day.items %}
+            <div class="bg-white p-4 min-h-48">
+                <!-- Date Header -->
+                <div class="text-sm font-medium text-gray-900 mb-2">
+                    {{ date|date:"M d" }}
+                    {% if date == today %}
+                    <span class="inline-block w-2 h-2 bg-blue-500 rounded-full ml-1"></span>
+                    {% endif %}
+                </div>
+                
+                <!-- Day Totals -->
+                {% if day_data.total_calories > 0 or day_data.total_duration > 0 %}
+                <div class="text-xs text-gray-600 mb-2">
+                    <div>{{ day_data.total_calories|floatformat:0 }} kcal</div>
+                    <div>{{ day_data.total_duration|floatformat:1 }}h</div>
+                </div>
+                {% endif %}
+                
+                <!-- Planned Activities -->
+                {% for activity in day_data.activities %}
+                <div class="mb-2 p-2 bg-blue-50 rounded border-l-4 border-blue-400">
+                    <div class="text-xs font-medium text-blue-800">
+                        {{ activity.name|default:activity.activity_type.display_name }}
+                    </div>
+                    <div class="text-xs text-blue-600">
+                        {{ activity.start_time|time:"H:i" }} - {{ activity.duration_hours }}h
+                    </div>
+                    {% if activity.is_completed %}
+                    <span class="material-icons text-xs text-green-600">check_circle</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+                
+                <!-- Logged Activities -->
+                {% for record in day_data.records %}
+                <div class="mb-2 p-2 bg-green-50 rounded border-l-4 border-green-400">
+                    <div class="text-xs font-medium text-green-800">
+                        {% if record.activity %}
+                            {{ record.activity.name|default:record.activity.activity_type.display_name }}
+                        {% elif record.activity_name %}
+                            {{ record.activity_name }}
+                        {% else %}
+                            Unknown Activity
+                        {% endif %}
+                    </div>
+                    <div class="text-xs text-green-600">
+                        {{ record.start_time|time:"H:i"|default:"" }} - {{ record.get_duration_hours }}h
+                    </div>
+                </div>
+                {% endfor %}
+                
+                <!-- Empty State -->
+                {% if day_data.activities|length == 0 and day_data.records|length == 0 %}
+                <div class="text-xs text-gray-400 text-center mt-8">
+                    No activities
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Log Activity Modal -->
+<div id="logActivityModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div class="flex justify-between items-center p-6 border-b">
+                <h3 class="text-lg font-semibold text-gray-900">Log Activity</h3>
+                <button onclick="closeLogActivityModal()" class="text-gray-400 hover:text-gray-600">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            
+            <form id="logActivityForm" class="p-6">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Activity Type</label>
+                        <select name="activity" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500">
+                            <option value="">Select a planned activity...</option>
+                            {% for activity in user_activities %}
+                            <option value="{{ activity.id }}">{{ activity.name|default:activity.activity_type.display_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="border-t pt-4">
+                        <p class="text-sm text-gray-600 mb-4">Or log an unplanned activity:</p>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Activity Name</label>
+                            <input type="text" name="activity_name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Activity Type</label>
+                            <input type="text" name="activity_type_name" placeholder="e.g., running, strength_training" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Duration (hours)</label>
+                            <input type="number" name="duration_hours" step="0.25" min="0.25" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Date</label>
+                        <input type="date" name="date" value="{{ today|date:'Y-m-d' }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Notes</label>
+                        <textarea name="notes" rows="3" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"></textarea>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" onclick="closeLogActivityModal()" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                        Log Activity
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function openLogActivityModal() {
+    document.getElementById('logActivityModal').classList.remove('hidden');
+}
+
+function closeLogActivityModal() {
+    document.getElementById('logActivityModal').classList.add('hidden');
+}
+
+document.getElementById('logActivityForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch('{% url "activities:create_activity_record" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeLogActivityModal();
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error logging activity');
+    });
+});
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}
