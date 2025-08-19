@@ -1,35 +1,900 @@
 {% extends "base.html" %}
-{% block title %}Planner{% endblock %}
+{% load meal_extras %}
+
+{% block title %}Planner Calendar{% endblock %}
+
 {% block content %}
 <div class="container mx-auto px-4 py-8">
-	<div class="mb-6 flex items-center justify-between">
-		<h1 class="text-2xl font-bold">Planner</h1>
-		<div class="space-x-2">
-			<a href="?week={{ (week_start|date:'o') }}-{{ (week_start|date:'W'|add:'-1') }}" class="px-3 py-2 border rounded">Previous</a>
-			<a href="?week={{ (week_end|date:'o') }}-{{ (week_end|date:'W'|add:'1') }}" class="px-3 py-2 border rounded">Next</a>
-		</div>
-	</div>
-	<div class="bg-white rounded shadow overflow-hidden">
-		<div class="grid grid-cols-7 bg-gray-50 border-b">
-			{% for day in week_days %}
-			<div class="p-3 text-center font-medium">{{ day|date:"D M j" }}</div>
-			{% endfor %}
-		</div>
-		<div class="grid grid-cols-7">
-			{% for day in week_days %}
-			<div class="min-h-40 p-3 border-r border-gray-200 {% if forloop.last %}border-r-0{% endif %}">
-				<div class="space-y-2 text-sm">
-					{% for ev in events_by_day|get_item:day %}
-					<div class="border rounded p-2">
-						{{ ev.title }}
-					</div>
-					{% empty %}
-					<div class="text-gray-400 text-center">No events</div>
-					{% endfor %}
-				</div>
-			</div>
-			{% endfor %}
-		</div>
-	</div>
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">Planner Calendar</h1>
+                <p class="text-gray-600">Unified view of your meals and activities</p>
+            </div>
+            <div class="flex space-x-3">
+                <a href="{% url 'meals:meals' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    <span class="material-icons text-lg mr-2">restaurant</span>
+                    Manage Meals
+                </a>
+                <a href="{% url 'activities:manage' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    <span class="material-icons text-lg mr-2">fitness_center</span>
+                    Manage Activities
+                </a>
+                <a href="{% url 'dashboard' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Week Navigation -->
+    <div class="bg-white rounded-lg shadow mb-6">
+        <div class="p-4">
+            <div class="flex items-center justify-between">
+                <a href="?week={{ prev_week_param }}&view={{ view_type }}" 
+                   class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    <span class="material-icons text-lg mr-2">chevron_left</span>
+                    Previous Week
+                </a>
+                
+                <div class="text-center">
+                    <h2 class="text-xl font-semibold text-gray-900">
+                        {{ week_start|date:"M j" }} - {{ week_end|date:"M j, Y" }}
+                    </h2>
+                    <p class="text-sm text-gray-600">
+                        Week {{ current_week_param|slice:"5:" }} of {{ current_week_param|slice:":4" }}
+                    </p>
+                    
+                    <!-- View Toggle -->
+                    <div class="flex items-center justify-center mt-3">
+                        <div class="flex items-center space-x-1 bg-gray-100 rounded-lg p-1">
+                            <button onclick="switchToWeekView()" 
+                                    class="px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 {% if not view_type or view_type == 'week' %}bg-white text-gray-900 shadow-sm{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+                                Week
+                            </button>
+                            <button onclick="switchToDayView()" 
+                                    class="px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 {% if view_type == 'day' %}bg-white text-gray-900 shadow-sm{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+                                Day
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <a href="?week={{ next_week_param }}&view={{ view_type }}" 
+                   class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    Next Week
+                    <span class="material-icons text-lg ml-2">chevron_right</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Weekly Summary -->
+    {% if weekly_targets %}
+    <div class="bg-white rounded-lg shadow mb-6">
+        <div class="p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Weekly Summary</h3>
+            <div class="grid grid-cols-2 lg:grid-cols-6 gap-4">
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-blue-600">{{ week_totals.calories_in|floatformat:0 }}</div>
+                    <div class="text-sm text-gray-600">Calories In</div>
+                    <div class="text-xs text-gray-500">
+                        Target: {{ weekly_targets.calories|floatformat:0 }}
+                        {% if week_percentages %}
+                        ({{ week_percentages.calories|floatformat:0 }}%)
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-green-600">{{ week_totals.calories_out|floatformat:0 }}</div>
+                    <div class="text-sm text-gray-600">Calories Out</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-purple-600">{{ week_totals.proteins|floatformat:1 }}g</div>
+                    <div class="text-sm text-gray-600">Protein</div>
+                    <div class="text-xs text-gray-500">
+                        Target: {{ weekly_targets.proteins|floatformat:1 }}g
+                        {% if week_percentages %}
+                        ({{ week_percentages.proteins|floatformat:0 }}%)
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-yellow-600">{{ week_totals.carbs|floatformat:1 }}g</div>
+                    <div class="text-sm text-gray-600">Carbs</div>
+                    <div class="text-xs text-gray-500">
+                        Target: {{ weekly_targets.carbs|floatformat:1 }}g
+                        {% if week_percentages %}
+                        ({{ week_percentages.carbs|floatformat:0 }}%)
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-red-600">{{ week_totals.fats|floatformat:1 }}g</div>
+                    <div class="text-sm text-gray-600">Fat</div>
+                    <div class="text-xs text-gray-500">
+                        Target: {{ weekly_targets.fats|floatformat:1 }}g
+                        {% if week_percentages %}
+                        ({{ week_percentages.fats|floatformat:0 }}%)
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-orange-600">{{ week_totals.meals_logged }}/{{ week_totals.activities_logged }}</div>
+                    <div class="text-sm text-gray-600">Meals/Activities</div>
+                    <div class="text-xs text-gray-500">Logged this week</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Calendar Grid -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <!-- Calendar Header -->
+        <div class="grid grid-cols-8 bg-gray-50 border-b">
+            <!-- Empty cell for time column -->
+            <div class="p-4 text-center border-r border-gray-200">
+                <div class="text-sm font-medium text-gray-500">Time</div>
+            </div>
+            {% for day in week_days %}
+            <div class="p-4 text-center">
+                <a href="?date={{ day|date:'Y-m-d' }}&view=day" 
+                   class="font-medium {% if day == current_date %}text-blue-600 bg-blue-50 px-2 py-1 rounded{% else %}text-gray-900 hover:text-blue-600{% endif %} transition-colors duration-200 cursor-pointer">
+                    {{ day|date:"l" }}
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Calendar Grid with Time Lines -->
+        <div class="grid grid-cols-8">
+            <!-- Time Column -->
+            <div class="border-r border-gray-200">
+                <!-- Time Header -->
+                <div class="p-2 border-b border-gray-200 bg-gray-50">
+                    <div class="text-sm font-medium text-gray-900">Time</div>
+                </div>
+                
+                <!-- Time Labels -->
+                <div class="relative" style="height: 960px;">
+                    {% for hour in hours %}
+                    <div class="absolute left-2 text-xs text-gray-600 font-semibold" 
+                         style="top: {{ forloop.counter0|mul:60 }}px; transform: translateY(-50%);">
+                        {{ hour|stringformat:"02d" }}:00
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Day Columns -->
+            {% for day in week_days %}
+            <div class="border-r border-gray-200 {% if forloop.last %}border-r-0{% endif %}">
+                <!-- Date Header -->
+                <div class="p-2 border-b border-gray-200 {% if day == week_start %}bg-blue-50{% endif %}">
+                    <div class="text-sm font-medium text-gray-900">{{ day|date:"M j" }}</div>
+                    <div class="text-xs text-gray-500">{{ day|date:"D" }}</div>
+                </div>
+
+                <!-- Day Content with Time Grid -->
+                <div class="relative" style="height: 960px;">
+                    <!-- Horizontal Time Lines -->
+                    {% for hour in hours %}
+                    <div class="absolute left-0 right-0 border-t border-gray-200" 
+                         style="top: {{ forloop.counter0|mul:60 }}px;"></div>
+                    {% endfor %}
+                    
+                    <!-- Half-hour lines (lighter) -->
+                    {% for hour in hours %}
+                    <div class="absolute left-0 right-0 border-t border-gray-100" 
+                         style="top: {{ forloop.counter0|mul:60|add:30 }}px;"></div>
+                    {% endfor %}
+                    
+                    <!-- Events -->
+                    {% with day_events=events_by_day|get_item:day %}
+                    {% for event in day_events %}
+                    <div class="event-card border rounded p-1 absolute overflow-hidden
+                              {% if event.type == 'meal' %}{% if event.is_completed %}bg-green-50 border-green-200{% else %}bg-blue-50 border-blue-200{% endif %}
+                              {% elif event.type == 'meal_record' %}bg-green-50 border-green-200
+                              {% elif event.type == 'activity' %}{% if event.is_completed %}bg-purple-50 border-purple-200{% else %}bg-purple-50 border-purple-200{% endif %}
+                              {% elif event.type == 'activity_record' %}bg-orange-50 border-orange-200{% endif %}" 
+                         style="top: {% widthratio event.time.hour|add:-6 1 60 %}px; left: 2px; right: 2px; min-height: {{ event.duration|default:30|div:5|mul:30 }}px; max-height: {{ event.duration|default:30|div:5|mul:60 }}px; z-index: 10;"
+                         data-event-id="{{ event.object.id }}" 
+                         data-event-type="{{ event.type }}"
+                         data-date="{{ day|date:'Y-m-d' }}">
+                        
+                        <!-- Content - Title First -->
+                        <div class="ml-1 pr-1 overflow-hidden">
+                            <div class="text-xs font-medium {% if event.type == 'meal' %}{% if event.is_completed %}text-green-900{% else %}text-blue-900{% endif %}{% elif event.type == 'meal_record' %}text-green-900{% elif event.type == 'activity' %}text-purple-900{% elif event.type == 'activity_record' %}text-orange-900{% endif %} truncate leading-tight">{{ event.title }}</div>
+                        </div>
+                        
+                        <!-- Action Buttons Row with Time -->
+                        <div class="flex justify-between items-center space-x-0.5 mb-0.5">
+                            <!-- Time on the left -->
+                            {% if event.time %}
+                            <div class="text-xs font-semibold {% if event.type == 'meal' %}{% if event.is_completed %}text-green-700{% else %}text-blue-700{% endif %}{% elif event.type == 'meal_record' %}text-green-700{% elif event.type == 'activity' %}text-purple-700{% elif event.type == 'activity_record' %}text-orange-700{% endif %} leading-tight">{{ event.time|time:"g:i A" }}</div>
+                            {% else %}
+                            <div></div>
+                            {% endif %}
+                            
+                            <!-- Action buttons on the right -->
+                            <div class="flex items-center space-x-0.5">
+                                <!-- Feedback Button - Show for completed events -->
+                                {% if event.is_completed %}
+                                <button onclick="openFeedbackModal('{{ event.type }}', {{ event.object.id }}, '{{ day|date:'Y-m-d' }}')" 
+                                        class="feedback-btn p-0.5 rounded-full transition-colors duration-200 hover:bg-blue-100"
+                                        title="Add feedback"
+                                        data-event-id="{{ event.object.id }}"
+                                        data-event-type="{{ event.type }}"
+                                        data-date="{{ day|date:'Y-m-d' }}">
+                                    <span class="material-icons text-blue-600 text-xs feedback-icon" 
+                                          data-event-id="{{ event.object.id }}" 
+                                          data-event-type="{{ event.type }}"
+                                          data-date="{{ day|date:'Y-m-d' }}">rate_review</span>
+                                </button>
+                                {% endif %}
+                                
+                                <!-- Edit/Delete Buttons for logged records -->
+                                {% if event.type == 'meal_record' or event.type == 'activity_record' %}
+                                <button onclick="openEdit{{ event.type|capfirst }}Modal({{ event.object.id }})" 
+                                        class="edit-btn p-0.5 rounded-full transition-colors duration-200 hover:bg-orange-100"
+                                        title="Edit {{ event.type|cut:'_record' }}">
+                                    <span class="material-icons text-orange-600 text-xs">edit</span>
+                                </button>
+                                
+                                <button onclick="delete{{ event.type|capfirst }}({{ event.object.id }})" 
+                                        class="delete-btn p-0.5 rounded-full transition-colors duration-200 hover:bg-red-100"
+                                        title="Delete {{ event.type|cut:'_record' }}">
+                                    <span class="material-icons text-red-600 text-xs">delete</span>
+                                </button>
+                                {% endif %}
+                                
+                                <!-- Completion Toggle - Only show for planned events on current day -->
+                                {% if event.type == 'meal' or event.type == 'activity' %}
+                                    {% if day == current_date %}
+                                    <button onclick="toggleEventCompletion('{{ event.type }}', {{ event.object.id }}, '{{ day|date:'Y-m-d' }}')" 
+                                            class="completion-btn p-0.5 rounded-full transition-colors duration-200 {% if event.is_completed %}bg-green-200 hover:bg-green-300{% endif %}"
+                                            data-event-id="{{ event.object.id }}"
+                                            data-event-type="{{ event.type }}"
+                                            data-date="{{ day|date:'Y-m-d' }}"
+                                            title="{% if event.is_completed %}Unmark as completed{% else %}Mark as completed{% endif %}">
+                                        {% if event.is_completed %}
+                                        <span class="material-icons text-green-600 text-xs">check_circle</span>
+                                        {% else %}
+                                        <span class="material-icons text-gray-400 text-xs">radio_button_unchecked</span>
+                                        {% endif %}
+                                    </button>
+                                    {% else %}
+                                    <!-- Show completion status for non-current days (read-only) -->
+                                    {% if event.is_completed %}
+                                    <div class="p-0.5 rounded-full bg-green-200">
+                                        <span class="material-icons text-green-600 text-xs">check_circle</span>
+                                    </div>
+                                    {% else %}
+                                    <div class="p-0.5 rounded-full bg-gray-100">
+                                        <span class="material-icons text-gray-400 text-xs">radio_button_unchecked</span>
+                                    </div>
+                                    {% endif %}
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Event Type Indicator -->
+                        <div class="absolute bottom-0.5 left-0.5 w-1.5 h-1.5 rounded-full 
+                                    {% if event.type == 'meal' %}bg-blue-500
+                                    {% elif event.type == 'meal_record' %}bg-green-500
+                                    {% elif event.type == 'activity' %}bg-purple-500
+                                    {% elif event.type == 'activity_record' %}bg-orange-500{% endif %}">
+                        </div>
+                        
+                        <!-- Additional Content -->
+                        <div class="ml-1 pr-1 overflow-hidden">
+                            <div class="text-xs {% if event.type == 'meal' %}{% if event.is_completed %}text-green-600{% else %}text-blue-600{% endif %}{% elif event.type == 'meal_record' %}text-green-600{% elif event.type == 'activity' %}text-purple-600{% elif event.type == 'activity_record' %}text-orange-600{% endif %} leading-tight">
+                                {% if event.duration %}{{ event.duration }}min{% endif %}
+                                {% if event.type == 'meal' or event.type == 'activity' %}
+                                    {% if event.object.recurrence_type != 'none' %}
+                                    <span class="{% if event.is_completed %}text-green-500{% else %}{% if event.type == 'meal' %}text-blue-500{% else %}text-purple-500{% endif %}{% endif %}">• {{ event.object.recurrence_type|title }}</span>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Nutrition/Calories Info -->
+                            {% if event.nutrition %}
+                            <div class="text-xs text-gray-500 leading-tight">
+                                {{ event.nutrition.calories|floatformat:0 }} cal
+                                {% if event.nutrition.proteins %}({{ event.nutrition.proteins|floatformat:1 }}p){% endif %}
+                            </div>
+                            {% endif %}
+                            {% if event.calories_burned %}
+                            <div class="text-xs text-gray-500 leading-tight">-{{ event.calories_burned|floatformat:0 }} cal</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-gray-400 text-center text-xs py-2">No events</div>
+                    {% endfor %}
+                    {% endwith %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Log Meal/Activity Button for Today -->
+    {% if current_date in week_days %}
+    <div class="mt-6 flex justify-center space-x-4">
+        <button onclick="openLogMealModal('{{ current_date|date:'Y-m-d' }}')" 
+                class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">
+            <span class="material-icons text-lg mr-2">restaurant</span>
+            Log Meal
+        </button>
+        <button onclick="openLogActivityModal('{{ current_date|date:'Y-m-d' }}')" 
+                class="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700">
+            <span class="material-icons text-lg mr-2">fitness_center</span>
+            Log Activity
+        </button>
+    </div>
+    {% endif %}
 </div>
+
+<!-- Log Meal Modal -->
+<div id="logMealModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div class="flex justify-between items-center p-6 border-b">
+                <h3 class="text-lg font-semibold text-gray-900">Log Meal</h3>
+                <button onclick="closeLogMealModal()" class="text-gray-400 hover:text-gray-600">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            
+            <form id="logMealForm" class="p-6">
+                <input type="hidden" id="log_meal_date" name="date">
+                <input type="hidden" id="log_meal_id" name="meal_id">
+                
+                <div class="space-y-4">
+                    <div>
+                        <label for="log_meal_name" class="block text-sm font-medium text-gray-700">Meal Name *</label>
+                        <input type="text" id="log_meal_name" name="meal_name" required
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="log_meal_calories" class="block text-sm font-medium text-gray-700">Calories</label>
+                            <input type="number" id="log_meal_calories" name="calories" step="0.1" min="0"
+                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="log_meal_proteins" class="block text-sm font-medium text-gray-700">Protein (g)</label>
+                            <input type="number" id="log_meal_proteins" name="proteins" step="0.1" min="0"
+                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="log_meal_carbs" class="block text-sm font-medium text-gray-700">Carbs (g)</label>
+                            <input type="number" id="log_meal_carbs" name="carbs" step="0.1" min="0"
+                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="log_meal_fats" class="block text-sm font-medium text-gray-700">Fat (g)</label>
+                            <input type="number" id="log_meal_fats" name="fats" step="0.1" min="0"
+                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label for="log_meal_notes" class="block text-sm font-medium text-gray-700">Notes</label>
+                        <textarea id="log_meal_notes" name="notes" rows="3"
+                                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" onclick="closeLogMealModal()" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                        Log Meal
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Log Activity Modal -->
+<div id="logActivityModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div class="flex justify-between items-center p-6 border-b">
+                <h3 class="text-lg font-semibold text-gray-900">Log Activity</h3>
+                <button onclick="closeLogActivityModal()" class="text-gray-400 hover:text-gray-600">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            
+            <form id="logActivityForm" class="p-6">
+                <input type="hidden" id="log_activity_date" name="date">
+                <input type="hidden" id="log_activity_id" name="activity_id">
+                
+                <div class="space-y-4">
+                    <div>
+                        <label for="log_activity_name" class="block text-sm font-medium text-gray-700">Activity Name *</label>
+                        <input type="text" id="log_activity_name" name="activity_name" required
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500">
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="log_activity_duration" class="block text-sm font-medium text-gray-700">Duration (hours)</label>
+                            <input type="number" id="log_activity_duration" name="duration_hours" step="0.25" min="0.25" required
+                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label for="log_activity_calories" class="block text-sm font-medium text-gray-700">Calories Burned</label>
+                            <input type="number" id="log_activity_calories" name="calories_burned" step="1" min="0"
+                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label for="log_activity_notes" class="block text-sm font-medium text-gray-700">Notes</label>
+                        <textarea id="log_activity_notes" name="notes" rows="3"
+                                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500"></textarea>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" onclick="closeLogActivityModal()" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700">
+                        Log Activity
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    </div>
+
+<!-- Feedback Modal -->
+<div id="feedbackModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Event Feedback</h3>
+                <button onclick="closeFeedbackModal()" class="text-gray-400 hover:text-gray-600">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            
+            <form id="feedbackForm" enctype="multipart/form-data">
+                <input type="hidden" id="feedbackEventType" name="event_type">
+                <input type="hidden" id="feedbackEventId" name="event_id">
+                <input type="hidden" id="feedbackDate" name="date">
+                
+                <div class="mb-4">
+                    <label for="feedbackText" class="block text-sm font-medium text-gray-700 mb-2">Feedback</label>
+                    <textarea id="feedbackText" name="feedback" rows="4" 
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="How did this go? Any notes or observations..."></textarea>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="feedbackPhoto" class="block text-sm font-medium text-gray-700 mb-2">Photo (optional)</label>
+                    <input type="file" id="feedbackPhoto" name="photo" accept="image/*"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeFeedbackModal()" 
+                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+                        Save Feedback
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// View switching
+function switchToWeekView() {
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.set('view', 'week');
+    currentUrl.searchParams.delete('date');
+    window.location.href = currentUrl.toString();
+}
+
+function switchToDayView() {
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.set('view', 'day');
+    currentUrl.searchParams.set('date', '{{ current_date|date:"Y-m-d" }}');
+    window.location.href = currentUrl.toString();
+}
+
+// Modal functions
+function openLogMealModal(date) {
+    document.getElementById('logMealModal').classList.remove('hidden');
+    document.getElementById('log_meal_date').value = date;
+    document.getElementById('log_meal_id').value = '';
+    document.getElementById('logMealForm').reset();
+}
+
+function closeLogMealModal() {
+    document.getElementById('logMealModal').classList.add('hidden');
+    document.getElementById('logMealForm').reset();
+}
+
+function openLogActivityModal(date) {
+    document.getElementById('logActivityModal').classList.remove('hidden');
+    document.getElementById('log_activity_date').value = date;
+    document.getElementById('log_activity_id').value = '';
+    document.getElementById('logActivityForm').reset();
+}
+
+function closeLogActivityModal() {
+    document.getElementById('logActivityModal').classList.add('hidden');
+    document.getElementById('logActivityForm').reset();
+}
+
+// Logging functions
+function logMeal(mealId, date) {
+    // Pre-populate the modal with meal data
+    document.getElementById('logMealModal').classList.remove('hidden');
+    document.getElementById('log_meal_date').value = date;
+    document.getElementById('log_meal_id').value = mealId;
+    // You could fetch meal data here to pre-populate fields
+}
+
+function logActivity(activityId, date) {
+    // Pre-populate the modal with activity data
+    document.getElementById('logActivityModal').classList.remove('hidden');
+    document.getElementById('log_activity_date').value = date;
+    document.getElementById('log_activity_id').value = activityId;
+    // You could fetch activity data here to pre-populate fields
+}
+
+// Form submissions
+document.getElementById('logMealForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch('{% url "planner:log_meal" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeLogMealModal();
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error occurred'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while logging the meal.');
+    });
+});
+
+document.getElementById('logActivityForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch('{% url "planner:log_activity" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeLogActivityModal();
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error occurred'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while logging the activity.');
+    });
+});
+
+// Completion toggle functionality
+function toggleEventCompletion(eventType, eventId, date) {
+    // Check if this is the current day (only allow editing current day)
+    const today = new Date().toISOString().split('T')[0];
+    if (date !== today) {
+        alert('You can only mark events as completed for today.');
+        return;
+    }
+    
+    const button = document.querySelector(`[data-event-id="${eventId}"][data-event-type="${eventType}"][data-date="${date}"]`);
+    const eventCard = document.querySelector(`.event-card[data-event-id="${eventId}"][data-event-type="${eventType}"][data-date="${date}"]`);
+    
+    // Check if event is currently completed
+    const isCompleted = eventCard.classList.contains('bg-green-50');
+    
+    let endpoint, method;
+    if (eventType === 'meal') {
+        const action = isCompleted ? 'uncomplete' : 'complete';
+        endpoint = `/meals/meals/${eventId}/${action}/`;
+        method = isCompleted ? 'DELETE' : 'POST';
+    } else if (eventType === 'activity') {
+        endpoint = `/activities/toggle-completion/${eventId}/`;
+        method = 'POST';
+    }
+    
+    fetch(endpoint, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({ date: date })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success || data.meal_id || data.activity_id) {
+            location.reload(); // Reload to update UI
+        } else {
+            alert('Error toggling event completion: ' + JSON.stringify(data));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error toggling event completion');
+    });
+}
+
+// Feedback Modal Functions
+function openFeedbackModal(eventType, eventId, date) {
+    document.getElementById('feedbackEventType').value = eventType;
+    document.getElementById('feedbackEventId').value = eventId;
+    document.getElementById('feedbackDate').value = date;
+    
+    // Load existing feedback if available
+    loadExistingFeedback(eventType, eventId, date);
+    
+    document.getElementById('feedbackModal').classList.remove('hidden');
+}
+
+function closeFeedbackModal() {
+    document.getElementById('feedbackModal').classList.add('hidden');
+    document.getElementById('feedbackForm').reset();
+}
+
+function loadExistingFeedback(eventType, eventId, date) {
+    const endpoint = eventType === 'meal' ? '/meals/meals/' : '/activities/activity/';
+    
+    fetch(`${endpoint}${eventId}/feedback/?date=${date}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.feedback) {
+            document.getElementById('feedbackText').value = data.feedback;
+        }
+        if (data.photo_url) {
+            // Show existing photo if available
+            const photoContainer = document.createElement('div');
+            photoContainer.className = 'mb-2';
+            photoContainer.innerHTML = `
+                <img src="${data.photo_url}" alt="Event photo" class="w-20 h-20 object-cover rounded">
+                <p class="text-xs text-gray-500 mt-1">Current photo</p>
+            `;
+            document.getElementById('feedbackPhoto').parentNode.appendChild(photoContainer);
+        }
+    })
+    .catch(error => {
+        console.error('Error loading feedback:', error);
+    });
+}
+
+// Handle feedback form submission
+document.getElementById('feedbackForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData();
+    const eventType = document.getElementById('feedbackEventType').value;
+    const eventId = document.getElementById('feedbackEventId').value;
+    
+    formData.append('event_type', eventType);
+    formData.append('event_id', eventId);
+    formData.append('date', document.getElementById('feedbackDate').value);
+    formData.append('feedback', document.getElementById('feedbackText').value);
+    
+    const photoFile = document.getElementById('feedbackPhoto').files[0];
+    if (photoFile) {
+        formData.append('photo', photoFile);
+    }
+    
+    const endpoint = eventType === 'meal' ? '/meals/meals/' : '/activities/activity/';
+    
+    fetch(`${endpoint}${eventId}/feedback/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'same-origin',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeFeedbackModal();
+            location.reload(); // Reload to show updated feedback
+        } else {
+            alert('Error saving feedback: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error saving feedback');
+    });
+});
+
+// Edit and Delete Functions for Records
+function openEditMealRecordModal(recordId) {
+    // For now, just show alert - can implement full edit modal later
+    alert('Edit meal record functionality coming soon!');
+}
+
+function openEditActivityRecordModal(recordId) {
+    // For now, just show alert - can implement full edit modal later
+    alert('Edit activity record functionality coming soon!');
+}
+
+function deleteMealRecord(recordId) {
+    if (confirm('Are you sure you want to delete this meal record?')) {
+        fetch(`/meals/meals/record/${recordId}/delete/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload(); // Reload to update the display
+            } else {
+                alert('Error deleting meal record: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error deleting meal record');
+        });
+    }
+}
+
+function deleteActivityRecord(recordId) {
+    if (confirm('Are you sure you want to delete this activity record?')) {
+        fetch(`/activities/activity-record/${recordId}/delete/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload(); // Reload to update the display
+            } else {
+                alert('Error deleting activity record: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error deleting activity record');
+        });
+    }
+}
+
+// Get CSRF token
+function getCookie(name) {
+    const metaToken = document.querySelector('meta[name="csrf-token"]');
+    if (metaToken && name === 'csrftoken') {
+        return metaToken.getAttribute('content');
+    }
+    
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Check for existing feedback and update icons
+function checkExistingFeedback() {
+    const feedbackIcons = document.querySelectorAll('.feedback-icon');
+    feedbackIcons.forEach(icon => {
+        const eventId = icon.getAttribute('data-event-id');
+        const eventType = icon.getAttribute('data-event-type');
+        const date = icon.getAttribute('data-date');
+        
+        const endpoint = eventType === 'meal' ? '/meals/meals/' : '/activities/activity/';
+        
+        fetch(`${endpoint}${eventId}/feedback/?date=${date}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.feedback || data.photo_url) {
+                // Update icon to show feedback exists
+                icon.textContent = 'rate_review';
+                icon.classList.remove('text-blue-600');
+                icon.classList.add('text-green-600');
+                icon.parentElement.title = 'Edit feedback';
+            }
+        })
+        .catch(error => {
+            console.error('Error checking feedback:', error);
+        });
+    });
+}
+
+// Check for existing feedback when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    checkExistingFeedback();
+});
+
+// Close modals when clicking outside
+window.onclick = function(event) {
+    const logMealModal = document.getElementById('logMealModal');
+    const logActivityModal = document.getElementById('logActivityModal');
+    const feedbackModal = document.getElementById('feedbackModal');
+    
+    if (event.target == logMealModal) {
+        closeLogMealModal();
+    }
+    if (event.target == logActivityModal) {
+        closeLogActivityModal();
+    }
+    if (event.target == feedbackModal) {
+        closeFeedbackModal();
+    }
+}
+</script>
 {% endblock %}
